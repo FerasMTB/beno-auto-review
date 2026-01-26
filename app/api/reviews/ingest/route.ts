@@ -5,7 +5,9 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 const TABLE_NAME =
-  process.env.REVIEWS_TABLE ?? process.env.AUTO_REVIEW_REVIEWS_TABLE;
+  process.env.REVIEWS_TABLE ??
+  process.env.AUTO_REVIEW_REVIEWS_TABLE ??
+  "autoReview-reviews";
 const REGION = process.env.AWS_REGION ?? "us-east-1";
 
 const dynamoClient = new DynamoDBClient({ region: REGION });
