@@ -1,14 +1,11 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { NextResponse } from "next/server";
-
-export const runtime = "nodejs";
 
 const TABLE_NAME =
   process.env.REVIEWS_TABLE ??
   process.env.AUTO_REVIEW_REVIEWS_TABLE ??
   "autoReview-reviews";
-const REGION = process.env.AWS_REGION ?? "us-east-1";
+const REGION = process.env.AWS_REGION ?? "me-south-1";
 
 const dynamoClient = new DynamoDBClient({ region: REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -47,7 +44,16 @@ type RawReview = {
   user?: { name?: string } | null;
 };
 
-const DEFAULT_SOURCE = "TripAdvisor";
+type IngestResult = {
+  stored: number;
+  skipped: number;
+  failed: number;
+  errors: { id: string; message: string }[];
+};
+
+type IngestOptions = {
+  defaultSource: string;
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -80,16 +86,18 @@ const getDefaultStatus = (rating: number | null) => {
   return "draft";
 };
 
-const normalizeReview = (review: unknown, nowIso: string) => {
+const normalizeReview = (
+  review: unknown,
+  nowIso: string,
+  defaultSource: string
+) => {
   if (!isRecord(review)) {
     throw new Error("Review must be an object");
   }
 
   const data = review as RawReview;
   const source =
-    toString(data.reviewOrigin) ??
-    toString(data.source) ??
-    DEFAULT_SOURCE;
+    toString(data.reviewOrigin) ?? toString(data.source) ?? defaultSource;
   const externalId = toString(data.reviewId) ?? toString(data.id);
 
   if (!externalId) {
@@ -154,22 +162,25 @@ const normalizeReview = (review: unknown, nowIso: string) => {
   };
 };
 
-const storeReviews = async (reviews: unknown[]) => {
+const storeReviews = async (
+  reviews: unknown[],
+  options: IngestOptions
+): Promise<IngestResult> => {
   if (!TABLE_NAME) {
     throw new Error("REVIEWS_TABLE is not configured");
   }
 
   const nowIso = new Date().toISOString();
-  const results = {
+  const results: IngestResult = {
     stored: 0,
     skipped: 0,
     failed: 0,
-    errors: [] as { id: string; message: string }[],
+    errors: [],
   };
 
   for (const review of reviews) {
     try {
-      const item = normalizeReview(review, nowIso);
+      const item = normalizeReview(review, nowIso, options.defaultSource);
 
       await docClient.send(
         new PutCommand({
@@ -187,11 +198,11 @@ const storeReviews = async (reviews: unknown[]) => {
         continue;
       }
 
-      results.failed += 1;
       const rawId =
         isRecord(review) && (review.reviewId ?? review.id)
           ? String(review.reviewId ?? review.id)
           : "unknown";
+      results.failed += 1;
       results.errors.push({
         id: rawId,
         message: typedError?.message ?? "Unknown error",
@@ -202,42 +213,19 @@ const storeReviews = async (reviews: unknown[]) => {
   return results;
 };
 
-export async function POST(request: Request) {
-  let payload: unknown;
+export const ingestReviews = async (
+  reviews: unknown[],
+  options: IngestOptions
+) => {
+  return storeReviews(reviews, options);
+};
 
-  try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json(
-      { message: "Invalid JSON payload" },
-      { status: 400 }
-    );
+export const extractReviewsPayload = (payload: unknown) => {
+  if (Array.isArray(payload)) {
+    return payload;
   }
-
-  const reviews = Array.isArray(payload)
-    ? payload
-    : isRecord(payload) && Array.isArray(payload.reviews)
-      ? payload.reviews
-      : null;
-
-  if (!reviews) {
-    return NextResponse.json(
-      { message: "Payload must be an array or { reviews: [] }" },
-      { status: 400 }
-    );
+  if (isRecord(payload) && Array.isArray(payload.reviews)) {
+    return payload.reviews as unknown[];
   }
-
-  try {
-    const results = await storeReviews(reviews);
-    return NextResponse.json({ ok: true, ...results }, { status: 200 });
-  } catch (error) {
-    const typedError = error as { message?: string };
-    return NextResponse.json(
-      {
-        message: "Failed to store reviews",
-        error: typedError?.message ?? "Unknown error",
-      },
-      { status: 500 }
-    );
-  }
-}
+  return null;
+};

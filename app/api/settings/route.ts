@@ -12,7 +12,7 @@ const TABLE_NAME =
   process.env.SETTINGS_TABLE ??
   process.env.AUTO_REVIEW_SETTINGS_TABLE ??
   "autoReview-settings";
-const REGION = process.env.AWS_REGION ?? "us-east-1";
+const REGION = process.env.AWS_REGION ?? "me-south-1";
 const SETTINGS_ID = "default";
 
 const dynamoClient = new DynamoDBClient({ region: REGION });

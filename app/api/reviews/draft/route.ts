@@ -8,7 +8,7 @@ const TABLE_NAME =
   process.env.REVIEWS_TABLE ??
   process.env.AUTO_REVIEW_REVIEWS_TABLE ??
   "autoReview-reviews";
-const REGION = process.env.AWS_REGION ?? "us-east-1";
+const REGION = process.env.AWS_REGION ?? "me-south-1";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
 
