@@ -8,8 +8,13 @@ type PromptInput = {
   link: string | null;
 };
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+const getOpenAiKey = () =>
+  process.env.OPENAI_API_KEY ?? process.env.AMPLIFY_OPENAI_API_KEY ?? null;
+
+const getOpenAiModel = () =>
+  process.env.OPENAI_MODEL ??
+  process.env.AMPLIFY_OPENAI_MODEL ??
+  "gpt-4o-mini";
 
 const DEFAULT_PROMPT =
   "Write a warm, concise reply. Mention the guest by name when available, thank them, and reference one detail from the review. Keep under 60 words. If the rating is 3 or lower, acknowledge the issue and invite them to contact support.";
@@ -104,18 +109,21 @@ export const buildUserPrompt = (
 };
 
 export const generateReply = async (prompt: string) => {
-  if (!OPENAI_API_KEY) {
+  const apiKey = getOpenAiKey();
+  if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not configured");
   }
+
+  const model = getOpenAiModel();
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: OPENAI_MODEL,
+      model,
       messages: [
         {
           role: "system",
