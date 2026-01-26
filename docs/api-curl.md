@@ -1,0 +1,165 @@
+# AutoReview API curl example
+
+Set your Next.js base URL (local dev is `http://localhost:3000`), then call the ingest endpoint.
+Make sure the server has AWS credentials, `AWS_REGION`, and `REVIEWS_TABLE` configured.
+
+## POST /reviews/ingest
+
+### Bash/zsh
+
+```bash
+API_URL="http://localhost:3000"
+
+curl -X POST "$API_URL/api/reviews/ingest" \
+  -H "Content-Type: application/json" \
+  --data-binary @- <<'JSON'
+[
+  {
+    "id": "1043473202",
+    "url": "https://www.tripadvisor.com/ShowUserReviews-g295424-d33516469-r1043473202-BENO-Dubai_Emirate_of_Dubai.html",
+    "title": "Amazing fast quality service - Continuous support",
+    "lang": "en",
+    "locationId": "33516469",
+    "publishedDate": "2025-12-23",
+    "publishedPlatform": "MOBILE",
+    "rating": 5,
+    "helpfulVotes": 0,
+    "text": "Great service and car. We rented a G-Wagon from Hanan at the Beno desk at the W Palm. Car was perfect and Hanan service great, kept supporting us even on her day off. She took care of everything including paperwork and international license conversion in minutes.",
+    "roomTip": null,
+    "travelDate": "2025-12",
+    "tripType": "FAMILY",
+    "user": {
+      "userId": "A2A264C666EEC8D266E10440425EAF51",
+      "name": "karim e",
+      "contributions": {
+        "totalContributions": 2,
+        "helpfulVotes": 0
+      },
+      "username": "karimelm",
+      "userLocation": {
+        "shortName": "Casablanca",
+        "name": "Casablanca, Morocco",
+        "id": "293732"
+      },
+      "avatar": {
+        "id": "452391968",
+        "width": 1200,
+        "height": 1200,
+        "image": "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1a/f6/f4/20/default-avatar-2020-31.jpg"
+      },
+      "link": "www.tripadvisor.com/Profile/karimelm"
+    },
+    "ownerResponse": null,
+    "subratings": [],
+    "photos": [],
+    "placeInfo": {
+      "id": "33516469",
+      "name": "BENO",
+      "rating": 4.8,
+      "numberOfReviews": 11,
+      "locationString": "Dubai, Emirate of Dubai",
+      "latitude": null,
+      "longitude": null,
+      "webUrl": "https://www.tripadvisor.com/Attraction_Review-g295424-d33516469-Reviews-BENO-Dubai_Emirate_of_Dubai.html",
+      "website": "http://www.beno.com",
+      "address": "Private Kiosk, JBR, Dubai, UAE., Dubai 50000 United Arab Emirates",
+      "addressObj": {
+        "street1": "Private Kiosk, JBR, Dubai, UAE.",
+        "street2": null,
+        "city": "Dubai",
+        "state": null,
+        "country": "United Arab Emirates",
+        "postalcode": "50000"
+      },
+      "ratingHistogram": {
+        "count1": 0,
+        "count2": 0,
+        "count3": 0,
+        "count4": 2,
+        "count5": 9
+      }
+    }
+  }
+]
+JSON
+```
+
+### PowerShell
+
+```powershell
+$env:API_URL = "http://localhost:3000"
+$body = @'
+[
+  {
+    "id": "1043473202",
+    "url": "https://www.tripadvisor.com/ShowUserReviews-g295424-d33516469-r1043473202-BENO-Dubai_Emirate_of_Dubai.html",
+    "title": "Amazing fast quality service - Continuous support",
+    "lang": "en",
+    "locationId": "33516469",
+    "publishedDate": "2025-12-23",
+    "publishedPlatform": "MOBILE",
+    "rating": 5,
+    "helpfulVotes": 0,
+    "text": "Great service and car. We rented a G-Wagon from Hanan at the Beno desk at the W Palm. Car was perfect and Hanan service great, kept supporting us even on her day off. She took care of everything including paperwork and international license conversion in minutes.",
+    "roomTip": null,
+    "travelDate": "2025-12",
+    "tripType": "FAMILY",
+    "user": {
+      "userId": "A2A264C666EEC8D266E10440425EAF51",
+      "name": "karim e",
+      "contributions": {
+        "totalContributions": 2,
+        "helpfulVotes": 0
+      },
+      "username": "karimelm",
+      "userLocation": {
+        "shortName": "Casablanca",
+        "name": "Casablanca, Morocco",
+        "id": "293732"
+      },
+      "avatar": {
+        "id": "452391968",
+        "width": 1200,
+        "height": 1200,
+        "image": "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1a/f6/f4/20/default-avatar-2020-31.jpg"
+      },
+      "link": "www.tripadvisor.com/Profile/karimelm"
+    },
+    "ownerResponse": null,
+    "subratings": [],
+    "photos": [],
+    "placeInfo": {
+      "id": "33516469",
+      "name": "BENO",
+      "rating": 4.8,
+      "numberOfReviews": 11,
+      "locationString": "Dubai, Emirate of Dubai",
+      "latitude": null,
+      "longitude": null,
+      "webUrl": "https://www.tripadvisor.com/Attraction_Review-g295424-d33516469-Reviews-BENO-Dubai_Emirate_of_Dubai.html",
+      "website": "http://www.beno.com",
+      "address": "Private Kiosk, JBR, Dubai, UAE., Dubai 50000 United Arab Emirates",
+      "addressObj": {
+        "street1": "Private Kiosk, JBR, Dubai, UAE.",
+        "street2": null,
+        "city": "Dubai",
+        "state": null,
+        "country": "United Arab Emirates",
+        "postalcode": "50000"
+      },
+      "ratingHistogram": {
+        "count1": 0,
+        "count2": 0,
+        "count3": 0,
+        "count4": 2,
+        "count5": 9
+      }
+    }
+  }
+]
+'@
+
+curl.exe -X POST "$env:API_URL/api/reviews/ingest" `
+  -H "Content-Type: application/json" `
+  --data-binary $body
+```
