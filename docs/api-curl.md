@@ -2,6 +2,7 @@
 
 Set your Next.js base URL (local dev is `http://localhost:3000`), then call the ingest endpoint.
 Make sure the server has AWS credentials, `AWS_REGION`, and `REVIEWS_TABLE` configured.
+For draft endpoints, set `OPENAI_API_KEY` (and optional `OPENAI_MODEL`).
 
 ## POST /reviews/tripadvisor
 
@@ -254,6 +255,41 @@ $body = @'
 '@
 
 curl.exe -X POST "$env:API_URL/api/reviews/draft" `
+  -H "Content-Type: application/json" `
+  --data-binary $body
+```
+
+## POST /reviews/draft/all
+
+Draft replies for reviews that do not have a reply yet.
+
+### Bash/zsh
+
+```bash
+API_URL="http://localhost:3000"
+
+curl -X POST "$API_URL/api/reviews/draft/all" \
+  -H "Content-Type: application/json" \
+  --data-binary @- <<'JSON'
+{
+  "limit": 10,
+  "prompt": "Write a warm, concise reply. Mention the guest by name, thank them, and reference one detail from the review. Keep under 60 words."
+}
+JSON
+```
+
+### PowerShell
+
+```powershell
+$env:API_URL = "http://localhost:3000"
+$body = @'
+{
+  "limit": 10,
+  "prompt": "Write a warm, concise reply. Mention the guest by name, thank them, and reference one detail from the review. Keep under 60 words."
+}
+'@
+
+curl.exe -X POST "$env:API_URL/api/reviews/draft/all" `
   -H "Content-Type: application/json" `
   --data-binary $body
 ```
