@@ -11,12 +11,12 @@ export type Review = {
   id: string;
   source: ReviewSource;
   author: string;
-  rating: number;
+  rating: number | null;
   date: string;
-  review: string;
-  reply: string;
+  review: string | null;
+  reply: string | null;
   status: ReviewStatus;
-  link: string;
+  link: string | null;
 };
 
 export type StatCard = {

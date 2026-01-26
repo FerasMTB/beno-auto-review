@@ -163,3 +163,50 @@ curl.exe -X POST "$env:API_URL/api/reviews/ingest" `
   -H "Content-Type: application/json" `
   --data-binary $body
 ```
+
+## POST /reviews/draft
+
+### Bash/zsh
+
+```bash
+API_URL="http://localhost:3000"
+
+curl -X POST "$API_URL/api/reviews/draft" \
+  -H "Content-Type: application/json" \
+  --data-binary @- <<'JSON'
+{
+  "review": {
+    "reviewId": "Ci9DQUlRQUNvZENodHljRjlvT2xKclNWOUhVVUY1VjBsamEwVTVXWFEzYkV0RlVXYxAB",
+    "reviewOrigin": "Google",
+    "name": "Aine Zyva",
+    "stars": 1,
+    "text": "Great location but the room took a while to cool down.",
+    "publishedAtDate": "2026-01-25T09:24:39.199Z",
+    "reviewUrl": "https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sCi9DQUlRQUNvZENodHljRjlvT2xKclNWOUhVVUY1VjBsamEwVTVXWFEzYkV0RlVXYxAB!2m1!1s0x0:0xe9dcbd1799f01949!3m1!1s2@1:CAIQACodChtycF9oOlJrSV9HUUF5V0lja0U5WXQ3bEtFUWc%7C0dST4MAuu7U%7C?hl=en"
+  }
+}
+JSON
+```
+
+### PowerShell
+
+```powershell
+$env:API_URL = "http://localhost:3000"
+$body = @'
+{
+  "review": {
+    "reviewId": "Ci9DQUlRQUNvZENodHljRjlvT2xKclNWOUhVVUY1VjBsamEwVTVXWFEzYkV0RlVXYxAB",
+    "reviewOrigin": "Google",
+    "name": "Aine Zyva",
+    "stars": 1,
+    "text": "Great location but the room took a while to cool down.",
+    "publishedAtDate": "2026-01-25T09:24:39.199Z",
+    "reviewUrl": "https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sCi9DQUlRQUNvZENodHljRjlvT2xKclNWOUhVVUY1VjBsamEwVTVXWFEzYkV0RlVXYxAB!2m1!1s0x0:0xe9dcbd1799f01949!3m1!1s2@1:CAIQACodChtycF9oOlJrSV9HUUF5V0lja0U5WXQ3bEtFUWc%7C0dST4MAuu7U%7C?hl=en"
+  }
+}
+'@
+
+curl.exe -X POST "$env:API_URL/api/reviews/draft" `
+  -H "Content-Type: application/json" `
+  --data-binary $body
+```

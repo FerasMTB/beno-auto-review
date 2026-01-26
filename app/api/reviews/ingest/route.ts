@@ -15,20 +15,33 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 type RawReview = {
   id?: string | number;
+  reviewId?: string;
   url?: string;
   link?: string;
+  reviewUrl?: string;
   title?: string;
   lang?: string;
+  language?: string;
   locationId?: string | number;
+  placeId?: string | number;
   publishedDate?: string;
   publishedAt?: string;
+  publishedAtDate?: string;
   reviewedAt?: string;
   rating?: number | string | null;
+  stars?: number | string | null;
   text?: string;
+  textTranslated?: string;
   review?: string;
   reply?: string;
   status?: string;
   source?: string;
+  reviewOrigin?: string;
+  name?: string;
+  authorName?: string;
+  reviewerName?: string;
+  responseFromOwnerText?: string | null;
+  responseFromOwnerDate?: string | null;
   ownerResponse?: { text?: string } | null;
   placeInfo?: { id?: string | number; name?: string } | null;
   user?: { name?: string } | null;
@@ -73,15 +86,19 @@ const normalizeReview = (review: unknown, nowIso: string) => {
   }
 
   const data = review as RawReview;
-  const source = typeof data.source === "string" ? data.source : DEFAULT_SOURCE;
-  const externalId = toString(data.id);
+  const source =
+    toString(data.reviewOrigin) ??
+    toString(data.source) ??
+    DEFAULT_SOURCE;
+  const externalId = toString(data.reviewId) ?? toString(data.id);
 
   if (!externalId) {
     throw new Error("Missing review id");
   }
 
-  const rating = toNumber(data.rating);
+  const rating = toNumber(data.rating) ?? toNumber(data.stars);
   const reviewedAt =
+    toString(data.publishedAtDate) ??
     toString(data.publishedDate) ??
     toString(data.publishedAt) ??
     toString(data.reviewedAt) ??
@@ -96,9 +113,21 @@ const normalizeReview = (review: unknown, nowIso: string) => {
     data.placeInfo && isRecord(data.placeInfo) ? data.placeInfo : null;
   const user = data.user && isRecord(data.user) ? data.user : null;
 
-  const replyText = toString(data.reply) ?? toString(ownerResponse?.text);
+  const replyText =
+    toString(data.reply) ??
+    toString(data.responseFromOwnerText) ??
+    toString(ownerResponse?.text);
   const status =
     typeof data.status === "string" ? data.status : getDefaultStatus(rating);
+  const isGoogle = source.toLowerCase() === "google";
+  const placeName =
+    toString(placeInfo?.name) ?? (isGoogle ? toString(data.title) : null);
+  const reviewTitle = isGoogle ? null : toString(data.title);
+  const authorName =
+    toString(data.authorName) ??
+    toString(data.reviewerName) ??
+    toString(data.name) ??
+    toString(user?.name);
 
   return {
     reviewId: `${source}#${externalId}`,
@@ -106,16 +135,20 @@ const normalizeReview = (review: unknown, nowIso: string) => {
     source,
     reviewedAt,
     status,
-    title: toString(data.title),
-    review: toString(data.text) ?? toString(data.review),
+    title: reviewTitle,
+    review:
+      toString(data.text) ??
+      toString(data.textTranslated) ??
+      toString(data.review),
     reply: replyText,
     rating,
-    link: toString(data.url) ?? toString(data.link),
-    language: toString(data.lang),
+    link:
+      toString(data.reviewUrl) ?? toString(data.url) ?? toString(data.link),
+    language: toString(data.language) ?? toString(data.lang),
     locationId: toString(data.locationId),
-    placeId: toString(placeInfo?.id),
-    placeName: toString(placeInfo?.name),
-    authorName: toString(user?.name),
+    placeId: toString(data.placeId) ?? toString(placeInfo?.id),
+    placeName,
+    authorName,
     createdAt: nowIso,
     updatedAt: nowIso,
   };
@@ -155,8 +188,12 @@ const storeReviews = async (reviews: unknown[]) => {
       }
 
       results.failed += 1;
+      const rawId =
+        isRecord(review) && (review.reviewId ?? review.id)
+          ? String(review.reviewId ?? review.id)
+          : "unknown";
       results.errors.push({
-        id: isRecord(review) && review.id ? String(review.id) : "unknown",
+        id: rawId,
         message: typedError?.message ?? "Unknown error",
       });
     }
