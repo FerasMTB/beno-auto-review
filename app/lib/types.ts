@@ -1,0 +1,41 @@
+export type ReviewSource = "Google" | "TripAdvisor";
+
+export type ReviewStatus =
+  | "posted"
+  | "ready"
+  | "auto-post"
+  | "draft"
+  | "needs-review";
+
+export type Review = {
+  id: string;
+  source: ReviewSource;
+  author: string;
+  rating: number;
+  date: string;
+  review: string;
+  reply: string;
+  status: ReviewStatus;
+  link: string;
+};
+
+export type StatCard = {
+  label: string;
+  value: string;
+  helper?: string;
+};
+
+export type ActivityItem = {
+  id: string;
+  title: string;
+  meta: string;
+  time: string;
+};
+
+export type SourceStatus = {
+  id: string;
+  name: ReviewSource;
+  url: string;
+  status: "connected" | "needs-auth" | "paused";
+  lastSync: string;
+};
