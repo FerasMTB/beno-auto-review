@@ -65,17 +65,6 @@ export default function AppShell({
                 })}
               </nav>
 
-              <div className="rounded-3xl border border-[var(--color-stroke)] bg-white/70 p-5 shadow-[0_16px_32px_rgba(29,27,22,0.08)] backdrop-blur">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                  Next sync
-                </p>
-                <p className="mt-3 font-display text-xl text-[var(--color-ink)]">
-                  Tomorrow, 2:00 AM
-                </p>
-                <p className="mt-2 text-sm text-[var(--color-muted)]">
-                  Last run: Today, 2:03 AM
-                </p>
-              </div>
             </aside>
 
             <div className="space-y-8">

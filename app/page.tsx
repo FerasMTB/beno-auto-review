@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import AppShell from "./components/app-shell";
 import ReviewCard from "./components/review-card";
 import ReviewWorkflow from "./components/review-workflow";
-import { activityItems } from "./lib/mock-data";
-import type { Review, ReviewSource, ReviewStatus, SourceStatus } from "./lib/types";
+import type { Review, ReviewSource, ReviewStatus } from "./lib/types";
 
 type ApiReviewItem = {
   reviewId?: string;
@@ -22,33 +21,6 @@ type ApiReviewItem = {
 
 type ReviewItem = Review & {
   reviewedAt: string | null;
-};
-
-type SettingsState = {
-  googleMapsUrl: string;
-  tripAdvisorUrl: string;
-  syncTime: string;
-  replyPrompt: string;
-  autoDraftReplies: boolean;
-  autoPostHighStars: boolean;
-  holdLowStars: boolean;
-  replyTone: string;
-  approvalThreshold: string;
-  autoPostDelay: string;
-};
-
-const DEFAULT_SETTINGS: SettingsState = {
-  googleMapsUrl: "https://maps.google.com/?q=place",
-  tripAdvisorUrl: "https://www.tripadvisor.com/",
-  syncTime: "2:00 AM",
-  replyPrompt:
-    "Write a warm, concise reply. Mention the guest by name, thank them, and reference one detail from the review. Keep under 60 words.",
-  autoDraftReplies: true,
-  autoPostHighStars: false,
-  holdLowStars: true,
-  replyTone: "Warm and professional",
-  approvalThreshold: "3 stars and below",
-  autoPostDelay: "30 minutes",
 };
 
 const FILTERS = [
@@ -160,17 +132,12 @@ const matchesSearch = (review: ReviewItem, query: string) => {
   return haystack.includes(lowered);
 };
 
-const formatSyncLabel = (syncTime: string) => {
-  return syncTime ? `Daily at ${syncTime}` : "Daily";
-};
-
 export default function DashboardPage() {
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
-  const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
 
   useEffect(() => {
     let isMounted = true;
@@ -210,32 +177,7 @@ export default function DashboardPage() {
       }
     };
 
-    const loadSettings = async () => {
-      try {
-        const response = await fetch("/api/settings", {
-          signal: controller.signal,
-        });
-        const data = (await response.json()) as {
-          settings?: Partial<SettingsState>;
-          error?: string;
-        };
-
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to load settings");
-        }
-
-        if (isMounted && data.settings) {
-          setSettings((prev) => ({ ...prev, ...data.settings }));
-        }
-      } catch {
-        if (isMounted) {
-          setSettings((prev) => ({ ...prev }));
-        }
-      }
-    };
-
     loadReviews();
-    loadSettings();
 
     return () => {
       isMounted = false;
@@ -321,28 +263,6 @@ export default function DashboardPage() {
     );
   };
 
-  const connectedSources: SourceStatus[] = useMemo(() => {
-    const googleStatus = settings.googleMapsUrl ? "connected" : "needs-auth";
-    const tripStatus = settings.tripAdvisorUrl ? "connected" : "needs-auth";
-
-    return [
-      {
-        id: "src-google",
-        name: "Google",
-        url: settings.googleMapsUrl,
-        status: googleStatus,
-        lastSync: formatSyncLabel(settings.syncTime),
-      },
-      {
-        id: "src-trip",
-        name: "TripAdvisor",
-        url: settings.tripAdvisorUrl,
-        status: tripStatus,
-        lastSync: formatSyncLabel(settings.syncTime),
-      },
-    ];
-  }, [settings]);
-
   return (
     <AppShell
       title="Dashboard"
@@ -364,7 +284,7 @@ export default function DashboardPage() {
         </>
       }
     >
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-8">
         <section className="space-y-6">
           <ReviewWorkflow
             reviews={reviews}
@@ -449,108 +369,6 @@ export default function DashboardPage() {
             )}
           </div>
         </section>
-
-        <aside className="space-y-6">
-          <div className="rounded-3xl border border-[var(--color-stroke)] bg-white/70 p-5 shadow-[0_16px_32px_rgba(29,27,22,0.08)] backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-              Automation status
-            </p>
-            <p className="mt-3 font-display text-2xl text-[var(--color-ink)]">
-              Daily sync running
-            </p>
-            <p className="mt-2 text-sm text-[var(--color-muted)]">
-              Amplify checks new reviews every morning at {settings.syncTime} and
-              updates the queue.
-            </p>
-            <div className="mt-4 grid gap-2 text-sm text-[var(--color-muted)]">
-              <div className="flex items-center justify-between">
-                <span>Next run</span>
-                <span className="font-semibold text-[var(--color-ink)]">
-                  Tomorrow, {settings.syncTime}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Auto replies</span>
-                <span className="font-semibold text-[var(--color-ink)]">
-                  {settings.autoDraftReplies ? "Enabled" : "Disabled"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Manual checks</span>
-                <span className="font-semibold text-[var(--color-ink)]">
-                  {settings.holdLowStars
-                    ? settings.approvalThreshold
-                    : "None"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-[var(--color-stroke)] bg-white/70 p-5 shadow-[0_16px_32px_rgba(29,27,22,0.08)] backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-              Reply prompt
-            </p>
-            <p className="mt-3 text-sm leading-6 text-[var(--color-ink)]">
-              {settings.replyPrompt}
-            </p>
-            <button
-              className="mt-4 rounded-full border border-[var(--color-stroke)] bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-ink)] transition hover:border-[var(--color-ink)]"
-              type="button"
-            >
-              Edit prompt
-            </button>
-          </div>
-
-          <div className="rounded-3xl border border-[var(--color-stroke)] bg-white/70 p-5 shadow-[0_16px_32px_rgba(29,27,22,0.08)] backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-              Connected sources
-            </p>
-            <div className="mt-4 space-y-3 text-sm">
-              {connectedSources.map((source) => (
-                <div
-                  key={source.id}
-                  className="rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-[var(--color-ink)]">
-                      {source.name}
-                    </span>
-                    <span className="rounded-full bg-[var(--color-accent-cool)]/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-accent-cool-strong)]">
-                      {source.status}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-xs text-[var(--color-muted)]">
-                    {source.lastSync}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-[var(--color-stroke)] bg-white/70 p-5 shadow-[0_16px_32px_rgba(29,27,22,0.08)] backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-              Recent activity
-            </p>
-            <div className="mt-4 space-y-3 text-sm">
-              {activityItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3"
-                >
-                  <p className="font-semibold text-[var(--color-ink)]">
-                    {item.title}
-                  </p>
-                  <p className="mt-1 text-xs text-[var(--color-muted)]">
-                    {item.meta}
-                  </p>
-                  <p className="mt-2 text-xs text-[var(--color-muted)]">
-                    {item.time}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </aside>
       </div>
     </AppShell>
   );

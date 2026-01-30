@@ -1,5 +1,9 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 
 const TABLE_NAME =
   process.env.REVIEWS_TABLE ??
@@ -46,6 +50,7 @@ type RawReview = {
 
 type IngestResult = {
   stored: number;
+  updated: number;
   skipped: number;
   failed: number;
   errors: { id: string; message: string }[];
@@ -130,6 +135,7 @@ const normalizeReview = (
     ? Boolean(ownerResponseText && ownerResponseDate)
     : Boolean(ownerResponseText);
   const replyText = hasOwnerResponse ? ownerResponseText : toString(data.reply);
+  const replyPostedAt = hasOwnerResponse ? ownerResponseDate ?? nowIso : null;
   const status =
     typeof data.status === "string" ? data.status : getDefaultStatus(rating);
   const placeName =
@@ -153,6 +159,7 @@ const normalizeReview = (
       toString(data.textTranslated) ??
       toString(data.review),
     reply: replyText,
+    ...(replyPostedAt ? { replyPostedAt } : {}),
     rating,
     link:
       toString(data.reviewUrl) ?? toString(data.url) ?? toString(data.link),
@@ -166,6 +173,37 @@ const normalizeReview = (
   };
 };
 
+type NormalizedReview = ReturnType<typeof normalizeReview>;
+
+const updateExistingReply = async (
+  item: NormalizedReview,
+  nowIso: string
+) => {
+  if (!TABLE_NAME) {
+    throw new Error("REVIEWS_TABLE is not configured");
+  }
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { reviewId: item.reviewId },
+      UpdateExpression:
+        "SET #reply = :reply, #status = :status, updatedAt = :updatedAt, replyPostedAt = :replyPostedAt",
+      ExpressionAttributeNames: {
+        "#reply": "reply",
+        "#status": "status",
+      },
+      ExpressionAttributeValues: {
+        ":reply": item.reply,
+        ":status": item.status ?? "posted",
+        ":updatedAt": nowIso,
+        ":replyPostedAt": item.replyPostedAt ?? nowIso,
+      },
+      ConditionExpression: "attribute_exists(reviewId)",
+    })
+  );
+};
+
 const storeReviews = async (
   reviews: unknown[],
   options: IngestOptions
@@ -177,14 +215,16 @@ const storeReviews = async (
   const nowIso = new Date().toISOString();
   const results: IngestResult = {
     stored: 0,
+    updated: 0,
     skipped: 0,
     failed: 0,
     errors: [],
   };
 
   for (const review of reviews) {
+    let item: NormalizedReview | null = null;
     try {
-      const item = normalizeReview(review, nowIso, options.defaultSource);
+      item = normalizeReview(review, nowIso, options.defaultSource);
 
       await docClient.send(
         new PutCommand({
@@ -198,7 +238,27 @@ const storeReviews = async (
     } catch (error) {
       const typedError = error as { name?: string; message?: string };
       if (typedError?.name === "ConditionalCheckFailedException") {
-        results.skipped += 1;
+        if (
+          item &&
+          item.reply &&
+          typeof item.source === "string" &&
+          item.source.toLowerCase() === "google"
+        ) {
+          try {
+            await updateExistingReply(item, nowIso);
+            results.updated += 1;
+          } catch (updateError) {
+            const updateTypedError = updateError as { message?: string };
+            const updateId = item.externalId ?? item.reviewId ?? "unknown";
+            results.failed += 1;
+            results.errors.push({
+              id: updateId,
+              message: updateTypedError?.message ?? "Failed to update reply",
+            });
+          }
+        } else {
+          results.skipped += 1;
+        }
         continue;
       }
 
