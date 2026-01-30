@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import AppShell from "./components/app-shell";
 import ReviewCard from "./components/review-card";
+import ReviewWorkflow from "./components/review-workflow";
 import { activityItems } from "./lib/mock-data";
 import type { Review, ReviewSource, ReviewStatus, SourceStatus } from "./lib/types";
 
@@ -120,6 +121,7 @@ const mapReviewItem = (item: ApiReviewItem): ReviewItem => {
 
   return {
     id: getExternalId(item),
+    reviewKey: item.reviewId ?? null,
     source,
     author: item.authorName ?? "Guest",
     rating: typeof item.rating === "number" ? item.rating : null,
@@ -301,6 +303,24 @@ export default function DashboardPage() {
     );
   }, [filter, query, reviews]);
 
+  const handleWorkflowReplyUpdate = (reviewKey: string | null, reply: string) => {
+    if (!reviewKey) {
+      return;
+    }
+    setReviews((prev) =>
+      prev.map((review) => {
+        if (review.reviewKey === reviewKey) {
+          return { ...review, reply };
+        }
+        const fallbackKey = `${review.source}#${review.id}`;
+        if (!review.reviewKey && fallbackKey === reviewKey) {
+          return { ...review, reply };
+        }
+        return review;
+      })
+    );
+  };
+
   const connectedSources: SourceStatus[] = useMemo(() => {
     const googleStatus = settings.googleMapsUrl ? "connected" : "needs-auth";
     const tripStatus = settings.tripAdvisorUrl ? "connected" : "needs-auth";
@@ -346,6 +366,10 @@ export default function DashboardPage() {
     >
       <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
         <section className="space-y-6">
+          <ReviewWorkflow
+            reviews={reviews}
+            onReplyUpdate={handleWorkflowReplyUpdate}
+          />
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {stats.map((stat) => (
               <div

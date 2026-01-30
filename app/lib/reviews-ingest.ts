@@ -117,17 +117,21 @@ const normalizeReview = (
       ? data.ownerResponse
       : null;
 
+  const ownerResponseText =
+    toString(data.responseFromOwnerText) ?? toString(ownerResponse?.text);
+  const ownerResponseDate = toString(data.responseFromOwnerDate);
+
   const placeInfo =
     data.placeInfo && isRecord(data.placeInfo) ? data.placeInfo : null;
   const user = data.user && isRecord(data.user) ? data.user : null;
 
-  const replyText =
-    toString(data.reply) ??
-    toString(data.responseFromOwnerText) ??
-    toString(ownerResponse?.text);
+  const isGoogle = source.toLowerCase() === "google";
+  const hasOwnerResponse = isGoogle
+    ? Boolean(ownerResponseText && ownerResponseDate)
+    : Boolean(ownerResponseText);
+  const replyText = hasOwnerResponse ? ownerResponseText : toString(data.reply);
   const status =
     typeof data.status === "string" ? data.status : getDefaultStatus(rating);
-  const isGoogle = source.toLowerCase() === "google";
   const placeName =
     toString(placeInfo?.name) ?? (isGoogle ? toString(data.title) : null);
   const reviewTitle = isGoogle ? null : toString(data.title);
@@ -142,7 +146,7 @@ const normalizeReview = (
     externalId,
     source,
     reviewedAt,
-    status,
+    status: hasOwnerResponse ? "posted" : status,
     title: reviewTitle,
     review:
       toString(data.text) ??

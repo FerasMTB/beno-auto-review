@@ -9,6 +9,7 @@ export type ReviewStatus =
 
 export type Review = {
   id: string;
+  reviewKey?: string | null;
   source: ReviewSource;
   author: string;
   rating: number | null;

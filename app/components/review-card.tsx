@@ -15,11 +15,22 @@ type ReviewCardProps = {
 };
 
 export default function ReviewCard({ review }: ReviewCardProps) {
-  const [draftReply, setDraftReply] = useState(
-    review.reply ?? "No reply drafted yet."
+  const [draftReply, setDraftReply] = useState<string | null>(
+    review.reply ?? null
   );
   const [isDrafting, setIsDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [isPosting, setIsPosting] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
+  const [postMessage, setPostMessage] = useState<string | null>(null);
+  const isPosted = review.status === "posted";
+
+  const showPostMessage = (message: string) => {
+    setPostMessage(message);
+    window.setTimeout(() => {
+      setPostMessage(null);
+    }, 2000);
+  };
 
   const handleDraftReply = async () => {
     setIsDrafting(true);
@@ -31,7 +42,8 @@ export default function ReviewCard({ review }: ReviewCardProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           review: {
-            id: review.id,
+            reviewId: review.reviewKey ?? review.id,
+            reviewOrigin: review.source,
             source: review.source,
             authorName: review.author,
             rating: review.rating,
@@ -56,6 +68,51 @@ export default function ReviewCard({ review }: ReviewCardProps) {
       );
     } finally {
       setIsDrafting(false);
+    }
+  };
+
+  const handlePostReply = async () => {
+    const reply = draftReply?.trim();
+
+    if (!reply) {
+      setPostError("No reply to post");
+      return;
+    }
+
+    if (review.source !== "Google") {
+      setPostError("Only Google reviews can be posted");
+      return;
+    }
+
+    setIsPosting(true);
+    setPostError(null);
+    setPostMessage(null);
+
+    try {
+      const response = await fetch("/api/reviews/google/webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewId: review.id,
+          reviewKey: review.reviewKey,
+          reply,
+          source: review.source,
+        }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send reply");
+      }
+
+      showPostMessage("Reply sent");
+    } catch (error) {
+      setPostError(
+        error instanceof Error ? error.message : "Failed to send reply"
+      );
+    } finally {
+      setIsPosting(false);
     }
   };
 
@@ -92,11 +149,21 @@ export default function ReviewCard({ review }: ReviewCardProps) {
           Draft reply
         </p>
         <p className="mt-2 text-sm leading-6 text-[var(--color-ink)]">
-          {draftReply}
+          {draftReply ?? "No reply drafted yet."}
         </p>
         {draftError ? (
           <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-alert-strong)]">
             {draftError}
+          </p>
+        ) : null}
+        {postError ? (
+          <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-alert-strong)]">
+            {postError}
+          </p>
+        ) : null}
+        {postMessage ? (
+          <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-accent-strong)]">
+            {postMessage}
           </p>
         ) : null}
       </div>
@@ -120,16 +187,18 @@ export default function ReviewCard({ review }: ReviewCardProps) {
           <button
             className="rounded-full border border-[var(--color-stroke)] bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-ink)] transition hover:-translate-y-[1px] hover:border-[var(--color-ink)] disabled:cursor-not-allowed disabled:opacity-60"
             onClick={handleDraftReply}
-            disabled={isDrafting}
+            disabled={isDrafting || isPosted}
             type="button"
           >
-            {isDrafting ? "Drafting..." : "Draft with AI"}
+            {isDrafting ? "Drafting..." : isPosted ? "Reply posted" : "Draft with AI"}
           </button>
           <button
-            className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-canvas)] transition hover:-translate-y-[1px] hover:bg-[var(--color-ink-strong)]"
+            className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-canvas)] transition hover:-translate-y-[1px] hover:bg-[var(--color-ink-strong)] disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={handlePostReply}
+            disabled={isPosting || !draftReply || review.source !== "Google"}
             type="button"
           >
-            Post reply
+            {isPosting ? "Sending..." : "Send reply"}
           </button>
         </div>
       </div>
