@@ -23,8 +23,7 @@ export default function ReviewCard({ review }: ReviewCardProps) {
   const [isPosting, setIsPosting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const [postMessage, setPostMessage] = useState<string | null>(null);
-  const hasReply = Boolean(draftReply);
-  const isPosted = review.status === "posted" || hasReply;
+  const isPosted = review.status === "posted";
 
   const showPostMessage = (message: string) => {
     setPostMessage(message);

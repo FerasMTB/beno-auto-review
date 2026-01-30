@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   try {
     const input = extractPromptInput(reviewPayload);
     const prompt = buildUserPrompt(input, promptOverride);
-    const reply = await generateReply(prompt);
+    const reply = await generateReply(prompt, input.reviewText);
 
     const updateResult =
       input.reviewKey !== null ? await updateReply(input.reviewKey, reply) : null;

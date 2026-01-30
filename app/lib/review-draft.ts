@@ -8,13 +8,9 @@ type PromptInput = {
   link: string | null;
 };
 
-const getOpenAiKey = () =>
-  process.env.OPENAI_API_KEY ?? process.env.AMPLIFY_OPENAI_API_KEY ?? null;
-
-const getOpenAiModel = () =>
-  process.env.OPENAI_MODEL ??
-  process.env.AMPLIFY_OPENAI_MODEL ??
-  "gpt-4o-mini";
+const REPLY_WEBHOOK_URL =
+  process.env.REPLY_WEBHOOK_URL ??
+  "https://n8n-app.stg.beno.com/webhook/generate-reply";
 
 const DEFAULT_PROMPT =
   "Write a warm, concise reply. Mention the guest by name when available, thank them, and reference one detail from the review. Keep under 60 words. If the rating is 3 or lower, acknowledge the issue and invite them to contact support.";
@@ -108,51 +104,106 @@ export const buildUserPrompt = (
   )}\n\nReply:`;
 };
 
-export const generateReply = async (prompt: string) => {
-  const apiKey = getOpenAiKey();
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+const getReplyFromPayload = (payload: unknown) => {
+  if (Array.isArray(payload)) {
+    for (const entry of payload) {
+      const reply = getReplyFromPayload(entry);
+      if (reply) {
+        return reply;
+      }
+    }
   }
+  if (typeof payload === "string") {
+    return payload.trim().length ? payload.trim() : null;
+  }
+  if (isRecord(payload)) {
+    if (Array.isArray(payload.output)) {
+      for (const outputItem of payload.output) {
+        if (!isRecord(outputItem) || !Array.isArray(outputItem.content)) {
+          continue;
+        }
+        for (const contentItem of outputItem.content) {
+          if (
+            isRecord(contentItem) &&
+            contentItem.type === "output_text" &&
+            typeof contentItem.text === "string" &&
+            contentItem.text.trim().length
+          ) {
+            return contentItem.text.trim();
+          }
+        }
+      }
+    }
+    const replyCandidates = [
+      payload.reply,
+      payload.response,
+      payload.text,
+      payload.message,
+    ];
+    for (const candidate of replyCandidates) {
+      if (typeof candidate === "string" && candidate.trim().length) {
+        return candidate.trim();
+      }
+    }
+  }
+  return null;
+};
 
-  const model = getOpenAiModel();
+const getErrorFromPayload = (payload: unknown) => {
+  if (typeof payload === "string") {
+    return payload.trim().length ? payload.trim() : null;
+  }
+  if (isRecord(payload)) {
+    if (typeof payload.error === "string") {
+      return payload.error;
+    }
+    if (isRecord(payload.error) && typeof payload.error.message === "string") {
+      return payload.error.message;
+    }
+    if (typeof payload.message === "string") {
+      return payload.message;
+    }
+  }
+  return null;
+};
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+export const generateReply = async (
+  prompt: string,
+  reviewText: string | null
+) => {
+  const response = await fetch(REPLY_WEBHOOK_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You write polite, brand-safe replies to customer reviews. Keep replies concise and professional.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.4,
-      max_tokens: 180,
+      prompt,
+      reviewText: reviewText ?? "",
     }),
   });
 
+  const rawBody = await response.text();
+  let parsedBody: unknown = rawBody;
+
+  if (rawBody) {
+    try {
+      parsedBody = JSON.parse(rawBody) as unknown;
+    } catch {
+      parsedBody = rawBody;
+    }
+  }
+
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenAI error: ${response.status} ${errorText}`);
+    const errorText =
+      getErrorFromPayload(parsedBody) ??
+      (rawBody ? rawBody : `Webhook error (${response.status})`);
+    throw new Error(errorText);
   }
 
-  const data = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-
-  const content = data.choices?.[0]?.message?.content?.trim();
-  if (!content) {
-    throw new Error("OpenAI did not return a reply");
+  const reply = getReplyFromPayload(parsedBody);
+  if (!reply) {
+    throw new Error("Reply webhook did not return a reply");
   }
 
-  return content;
+  return reply;
 };
