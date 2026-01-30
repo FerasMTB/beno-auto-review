@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Review, ReviewSource } from "../lib/types";
 import StatusPill from "./status-pill";
@@ -23,7 +23,11 @@ export default function ReviewCard({ review }: ReviewCardProps) {
   const [isPosting, setIsPosting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const [postMessage, setPostMessage] = useState<string | null>(null);
-  const isPosted = review.status === "posted";
+  const [isPosted, setIsPosted] = useState(review.status === "posted");
+
+  useEffect(() => {
+    setIsPosted(review.status === "posted");
+  }, [review.status]);
 
   const showPostMessage = (message: string) => {
     setPostMessage(message);
@@ -106,6 +110,7 @@ export default function ReviewCard({ review }: ReviewCardProps) {
         throw new Error(data.error || "Failed to send reply");
       }
 
+      setIsPosted(true);
       showPostMessage("Reply sent");
     } catch (error) {
       setPostError(

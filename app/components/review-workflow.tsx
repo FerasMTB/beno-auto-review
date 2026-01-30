@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import StatusPill from "./status-pill";
-import type { Review } from "../lib/types";
+import type { Review, ReviewStatus } from "../lib/types";
 
 type ReviewWorkflowProps = {
   reviews: Review[];
   onReplyUpdate?: (reviewKey: string | null, reply: string) => void;
+  onStatusUpdate?: (reviewKey: string | null, status: ReviewStatus) => void;
 };
 
 const isTypingTarget = (target: EventTarget | null) => {
@@ -26,6 +27,7 @@ const isTypingTarget = (target: EventTarget | null) => {
 export default function ReviewWorkflow({
   reviews,
   onReplyUpdate,
+  onStatusUpdate,
 }: ReviewWorkflowProps) {
   const needsReview = useMemo(
     () =>
@@ -41,6 +43,7 @@ export default function ReviewWorkflow({
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [isDrafting, setIsDrafting] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
+  const [isPosted, setIsPosted] = useState(false);
 
   const current = needsReview[index] ?? null;
 
@@ -52,7 +55,8 @@ export default function ReviewWorkflow({
 
   useEffect(() => {
     setDraftReply(current?.reply ?? null);
-  }, [current?.reply, current?.id]);
+    setIsPosted(current?.status === "posted");
+  }, [current?.reply, current?.id, current?.status]);
 
   const showMessage = useCallback((message: string) => {
     setActionMessage(message);
@@ -178,6 +182,9 @@ export default function ReviewWorkflow({
         throw new Error(data.error || "Failed to send reply");
       }
 
+      const updateKey = current.reviewKey ?? `${current.source}#${current.id}`;
+      onStatusUpdate?.(updateKey, "posted");
+      setIsPosted(true);
       showMessage("Reply sent");
     } catch (error) {
       setPostError(
@@ -186,7 +193,7 @@ export default function ReviewWorkflow({
     } finally {
       setIsPosting(false);
     }
-  }, [current, draftReply, showMessage]);
+  }, [current, draftReply, onStatusUpdate, showMessage]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -321,9 +328,9 @@ export default function ReviewWorkflow({
               className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-canvas)] transition hover:-translate-y-[1px] hover:bg-[var(--color-ink-strong)] disabled:cursor-not-allowed disabled:opacity-60"
               type="button"
               onClick={() => void handleSend()}
-              disabled={isPosting || !draftReply}
+              disabled={isPosting || !draftReply || isPosted}
             >
-              {isPosting ? "Sending..." : "Send reply (S)"}
+              {isPosting ? "Sending..." : isPosted ? "Reply sent" : "Send reply (S)"}
             </button>
           ) : null}
           <button

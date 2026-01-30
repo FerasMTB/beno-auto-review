@@ -263,6 +263,27 @@ export default function DashboardPage() {
     );
   };
 
+  const handleWorkflowStatusUpdate = (
+    reviewKey: string | null,
+    status: ReviewStatus
+  ) => {
+    if (!reviewKey) {
+      return;
+    }
+    setReviews((prev) =>
+      prev.map((review) => {
+        if (review.reviewKey === reviewKey) {
+          return { ...review, status };
+        }
+        const fallbackKey = `${review.source}#${review.id}`;
+        if (!review.reviewKey && fallbackKey === reviewKey) {
+          return { ...review, status };
+        }
+        return review;
+      })
+    );
+  };
+
   return (
     <AppShell
       title="Dashboard"
@@ -289,6 +310,7 @@ export default function DashboardPage() {
           <ReviewWorkflow
             reviews={reviews}
             onReplyUpdate={handleWorkflowReplyUpdate}
+            onStatusUpdate={handleWorkflowStatusUpdate}
           />
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {stats.map((stat) => (
