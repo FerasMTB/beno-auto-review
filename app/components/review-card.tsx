@@ -23,7 +23,8 @@ export default function ReviewCard({ review }: ReviewCardProps) {
   const [isPosting, setIsPosting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const [postMessage, setPostMessage] = useState<string | null>(null);
-  const isPosted = review.status === "posted";
+  const hasReply = Boolean(draftReply);
+  const isPosted = review.status === "posted" || hasReply;
 
   const showPostMessage = (message: string) => {
     setPostMessage(message);
@@ -146,7 +147,7 @@ export default function ReviewCard({ review }: ReviewCardProps) {
 
       <div className="mt-5 rounded-2xl border border-[var(--color-stroke)] bg-[var(--color-soft)] p-4">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-          Draft reply
+          {isPosted ? "Reply posted" : "Draft reply"}
         </p>
         <p className="mt-2 text-sm leading-6 text-[var(--color-ink)]">
           {draftReply ?? "No reply drafted yet."}
@@ -192,14 +193,16 @@ export default function ReviewCard({ review }: ReviewCardProps) {
           >
             {isDrafting ? "Drafting..." : isPosted ? "Reply posted" : "Draft with AI"}
           </button>
-          <button
-            className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-canvas)] transition hover:-translate-y-[1px] hover:bg-[var(--color-ink-strong)] disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={handlePostReply}
-            disabled={isPosting || !draftReply || review.source !== "Google"}
-            type="button"
-          >
-            {isPosting ? "Sending..." : "Send reply"}
-          </button>
+          {isPosted ? null : (
+            <button
+              className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-canvas)] transition hover:-translate-y-[1px] hover:bg-[var(--color-ink-strong)] disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={handlePostReply}
+              disabled={isPosting || !draftReply || review.source !== "Google"}
+              type="button"
+            >
+              {isPosting ? "Sending..." : "Send reply"}
+            </button>
+          )}
         </div>
       </div>
     </article>
