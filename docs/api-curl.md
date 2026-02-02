@@ -6,6 +6,8 @@ For draft endpoints, set `OPENAI_API_KEY` (and optional `OPENAI_MODEL`).
 
 ## POST /reviews/tripadvisor
 
+Replies are generated automatically on ingest and saved as drafts (no auto-post for TripAdvisor).
+
 ### Bash/zsh
 
 ```bash
@@ -166,6 +168,8 @@ curl.exe -X POST "$env:API_URL/api/reviews/tripadvisor" `
 ```
 
 ## POST /reviews/google
+
+Replies are generated automatically on ingest. Reviews with rating >= 3 are posted via the Google reply webhook; ratings below 3 are drafted only.
 
 ### Bash/zsh
 
