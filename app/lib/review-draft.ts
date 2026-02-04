@@ -108,7 +108,7 @@ export const buildUserPrompt = (
   )}\n\nReply:`;
 };
 
-const getReplyFromPayload = (payload: unknown) => {
+const getReplyFromPayload = (payload: unknown): string | null => {
   if (Array.isArray(payload)) {
     for (const entry of payload) {
       const reply = getReplyFromPayload(entry);
