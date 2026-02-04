@@ -28,13 +28,48 @@ const toString = (value: unknown): string | null => {
   return null;
 };
 
+const WORD_NUMBERS: Record<string, number> = {
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+};
+
+const extractNumber = (value: string): number | null => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const numericMatch = trimmed.match(/-?\d+(?:\.\d+)?/);
+  if (numericMatch) {
+    const parsed = Number(numericMatch[0]);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  const normalized = trimmed.toLowerCase();
+  if (normalized in WORD_NUMBERS) {
+    return WORD_NUMBERS[normalized];
+  }
+
+  const wordMatch = normalized.match(/\b(zero|one|two|three|four|five)\b/);
+  if (wordMatch) {
+    return WORD_NUMBERS[wordMatch[1]];
+  }
+
+  return null;
+};
+
 const toNumber = (value: unknown): number | null => {
   if (typeof value === "number") {
     return value;
   }
   if (typeof value === "string") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+    return extractNumber(value);
   }
   return null;
 };
