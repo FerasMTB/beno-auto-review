@@ -17,6 +17,7 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 type RawReview = {
   id?: string | number;
   reviewId?: string;
+  reviewKey?: string;
   url?: string;
   link?: string;
   reviewUrl?: string;
@@ -34,6 +35,7 @@ type RawReview = {
   text?: string;
   textTranslated?: string;
   review?: string;
+  reviewText?: string;
   reply?: string;
   status?: string;
   source?: string;
@@ -84,6 +86,17 @@ const toNumber = (value: unknown): number | null => {
   return null;
 };
 
+const splitPrefixedId = (value: string) => {
+  const hashIndex = value.indexOf("#");
+  if (hashIndex <= 0 || hashIndex === value.length - 1) {
+    return null;
+  }
+  return {
+    prefix: value.slice(0, hashIndex),
+    id: value.slice(hashIndex + 1),
+  };
+};
+
 const getDefaultStatus = (rating: number | null) => {
   if (rating !== null && rating <= 3) {
     return "needs-review";
@@ -101,12 +114,28 @@ const normalizeReview = (
   }
 
   const data = review as RawReview;
-  const source =
-    toString(data.reviewOrigin) ?? toString(data.source) ?? defaultSource;
-  const externalId = toString(data.reviewId) ?? toString(data.id);
+  const sourceFromPayload =
+    toString(data.reviewOrigin) ?? toString(data.source);
+  let source = sourceFromPayload ?? defaultSource;
+  const rawReviewId =
+    toString(data.reviewKey) ??
+    toString(data.reviewId) ??
+    toString(data.id);
 
-  if (!externalId) {
+  if (!rawReviewId) {
     throw new Error("Missing review id");
+  }
+
+  let reviewId = "";
+  let externalId = rawReviewId;
+  const splitId = splitPrefixedId(rawReviewId);
+
+  if (splitId) {
+    source = splitId.prefix;
+    externalId = splitId.id;
+    reviewId = rawReviewId;
+  } else {
+    reviewId = `${source}#${externalId}`;
   }
 
   const rating = toNumber(data.rating) ?? toNumber(data.stars);
@@ -148,13 +177,14 @@ const normalizeReview = (
     toString(user?.name);
 
   return {
-    reviewId: `${source}#${externalId}`,
+    reviewId,
     externalId,
     source,
     reviewedAt,
     status: hasOwnerResponse ? "posted" : status,
     title: reviewTitle,
     review:
+      toString(data.reviewText) ??
       toString(data.text) ??
       toString(data.textTranslated) ??
       toString(data.review),

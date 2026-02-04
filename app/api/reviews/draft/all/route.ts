@@ -10,6 +10,7 @@ import {
   extractPromptInput,
   generateReply,
 } from "@/app/lib/review-draft";
+import { getReplyPrompt } from "@/app/lib/settings";
 
 export const runtime = "nodejs";
 
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
   const limit = isRecord(payload) ? parseLimit(payload.limit) : DEFAULT_LIMIT;
   const promptOverride =
     isRecord(payload) && typeof payload.prompt === "string"
-      ? payload.prompt
+      ? payload.prompt.trim() || null
       : null;
 
   try {
@@ -119,6 +120,8 @@ export async function POST(request: Request) {
     );
 
     const items = (response.Items as Record<string, unknown>[] | undefined) ?? [];
+    const settingsPrompt =
+      items.length > 0 && !promptOverride ? await getReplyPrompt() : null;
     const results = {
       scanned: items.length,
       processed: 0,
@@ -137,7 +140,7 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const prompt = buildUserPrompt(input, promptOverride);
+        const prompt = buildUserPrompt(input, promptOverride ?? settingsPrompt);
         const reply = await generateReply(prompt, input.reviewText);
         const updateResult = await updateReply(input.reviewKey, reply);
 

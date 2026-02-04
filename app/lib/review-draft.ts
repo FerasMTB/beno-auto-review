@@ -51,7 +51,10 @@ export const extractPromptInput = (payload: unknown): PromptInput => {
     toString(review.origin) ??
     null;
 
-  const rawReviewId = toString(review.reviewId) ?? toString(review.id);
+  const rawReviewId =
+    toString(review.reviewKey) ??
+    toString(review.reviewId) ??
+    toString(review.id);
   const reviewKey = rawReviewId
     ? rawReviewId.includes("#")
       ? rawReviewId
@@ -69,6 +72,7 @@ export const extractPromptInput = (payload: unknown): PromptInput => {
 
   const rating = toNumber(review.rating) ?? toNumber(review.stars);
   const reviewText =
+    toString(review.reviewText) ??
     toString(review.review) ??
     toString(review.text) ??
     toString(review.textTranslated);

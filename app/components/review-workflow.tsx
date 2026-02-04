@@ -30,10 +30,7 @@ export default function ReviewWorkflow({
   onStatusUpdate,
 }: ReviewWorkflowProps) {
   const needsReview = useMemo(
-    () =>
-      reviews.filter(
-        (review) => review.status === "needs-review" && !review.reply
-      ),
+    () => reviews.filter((review) => review.status === "needs-review"),
     [reviews]
   );
   const [index, setIndex] = useState(0);

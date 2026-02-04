@@ -6,6 +6,7 @@ import {
   extractPromptInput,
   generateReply,
 } from "@/app/lib/review-draft";
+import { getReplyPrompt } from "@/app/lib/settings";
 
 export const runtime = "nodejs";
 
@@ -75,12 +76,13 @@ export async function POST(request: Request) {
     isRecord(payload) && payload.review ? payload.review : payload;
   const promptOverride =
     isRecord(payload) && typeof payload.prompt === "string"
-      ? payload.prompt
+      ? payload.prompt.trim() || null
       : null;
 
   try {
     const input = extractPromptInput(reviewPayload);
-    const prompt = buildUserPrompt(input, promptOverride);
+    const settingsPrompt = promptOverride ? null : await getReplyPrompt();
+    const prompt = buildUserPrompt(input, promptOverride ?? settingsPrompt);
     const reply = await generateReply(prompt, input.reviewText);
 
     const updateResult =

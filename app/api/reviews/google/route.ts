@@ -7,6 +7,7 @@ import {
   generateReply,
 } from "@/app/lib/review-draft";
 import { extractReviewsPayload, ingestReviews } from "@/app/lib/reviews-ingest";
+import { getReplyPrompt } from "@/app/lib/settings";
 
 export const runtime = "nodejs";
 
@@ -183,7 +184,10 @@ const postReply = async (
   return result;
 };
 
-const autoGenerateReplies = async (reviews: unknown[]) => {
+const autoGenerateReplies = async (
+  reviews: unknown[],
+  settingsPrompt: string | null
+) => {
   const results = {
     processed: 0,
     drafted: 0,
@@ -204,7 +208,7 @@ const autoGenerateReplies = async (reviews: unknown[]) => {
         continue;
       }
 
-      const prompt = buildUserPrompt(input);
+      const prompt = buildUserPrompt(input, settingsPrompt);
       const reply = await generateReply(prompt, input.reviewText);
 
       const status =
@@ -281,7 +285,8 @@ export async function POST(request: Request) {
 
   try {
     const results = await ingestReviews(reviews, { defaultSource: "Google" });
-    const automation = await autoGenerateReplies(reviews);
+    const settingsPrompt = await getReplyPrompt();
+    const automation = await autoGenerateReplies(reviews, settingsPrompt);
     return NextResponse.json(
       { ok: true, ...results, automation },
       { status: 200 }
