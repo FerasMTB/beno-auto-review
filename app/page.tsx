@@ -213,6 +213,7 @@ export default function DashboardPage() {
         });
         const data = (await response.json()) as {
           items?: ApiReviewItem[];
+          nextCursor?: string | null;
           error?: string;
         };
 
