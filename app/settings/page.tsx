@@ -8,6 +8,7 @@ type SettingsState = {
   tripAdvisorUrl: string;
   syncTime: string;
   replyPrompt: string;
+  preferredLanguage: string;
   autoDraftReplies: boolean;
   autoPostHighStars: boolean;
   holdLowStars: boolean;
@@ -22,6 +23,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   syncTime: "2:00 AM",
   replyPrompt:
     "Write a warm, concise reply. Mention the guest by name, thank them, and reference one detail from the review. Keep under 60 words.",
+  preferredLanguage: "English",
   autoDraftReplies: true,
   autoPostHighStars: false,
   holdLowStars: true,
@@ -237,6 +239,20 @@ export default function SettingsPage() {
                   handleChange("replyPrompt", event.target.value)
                 }
               />
+              <label className="block space-y-2 text-sm">
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+                  Preferred reply language
+                </span>
+                <input
+                  className="w-full rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-ink)]"
+                  type="text"
+                  value={formState.preferredLanguage}
+                  onChange={(event) =>
+                    handleChange("preferredLanguage", event.target.value)
+                  }
+                  placeholder="English"
+                />
+              </label>
               <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--color-muted)]">
                 <span>Variables: {`{name}`}, {`{rating}`}, {`{source}`}</span>
                 <span>Max length: 60 words</span>

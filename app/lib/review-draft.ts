@@ -28,6 +28,14 @@ const toString = (value: unknown): string | null => {
   return null;
 };
 
+const toTrimmedString = (value: unknown): string | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+};
+
 const WORD_NUMBERS: Record<string, number> = {
   zero: 0,
   one: 1,
@@ -144,6 +152,27 @@ export const buildUserPrompt = (
 };
 
 const getReplyFromPayload = (payload: unknown): string | null => {
+  const pickReplyFromObject = (text: Record<string, unknown>) => {
+    const reply = toTrimmedString(text.reply);
+    const replyTranslated =
+      toTrimmedString(text.reply_translated) ??
+      toTrimmedString(text.replyTranslated);
+    const preferredFlag =
+      typeof text.in_preferd_language === "boolean"
+        ? text.in_preferd_language
+        : typeof text.in_preferred_language === "boolean"
+          ? text.in_preferred_language
+          : null;
+
+    if (preferredFlag === false && replyTranslated) {
+      return replyTranslated;
+    }
+    if (preferredFlag === true && reply) {
+      return reply;
+    }
+    return replyTranslated ?? reply;
+  };
+
   if (Array.isArray(payload)) {
     for (const entry of payload) {
       const reply = getReplyFromPayload(entry);
@@ -170,6 +199,16 @@ const getReplyFromPayload = (payload: unknown): string | null => {
           ) {
             return contentItem.text.trim();
           }
+          if (
+            isRecord(contentItem) &&
+            contentItem.type === "output_text" &&
+            isRecord(contentItem.text)
+          ) {
+            const reply = pickReplyFromObject(contentItem.text);
+            if (reply) {
+              return reply;
+            }
+          }
         }
       }
     }
@@ -182,6 +221,12 @@ const getReplyFromPayload = (payload: unknown): string | null => {
     for (const candidate of replyCandidates) {
       if (typeof candidate === "string" && candidate.trim().length) {
         return candidate.trim();
+      }
+      if (isRecord(candidate)) {
+        const reply = pickReplyFromObject(candidate);
+        if (reply) {
+          return reply;
+        }
       }
     }
   }
@@ -208,8 +253,10 @@ const getErrorFromPayload = (payload: unknown) => {
 
 export const generateReply = async (
   prompt: string,
-  reviewText: string | null
+  reviewText: string | null,
+  preferredLanguage: string | null = null
 ) => {
+  const trimmedLanguage = toTrimmedString(preferredLanguage);
   const response = await fetch(REPLY_WEBHOOK_URL, {
     method: "POST",
     headers: {
@@ -218,6 +265,9 @@ export const generateReply = async (
     body: JSON.stringify({
       prompt,
       reviewText: reviewText ?? "",
+      review: reviewText ?? "",
+      preferredLanguage: trimmedLanguage ?? undefined,
+      preferdLanguage: trimmedLanguage ?? undefined,
     }),
   });
 

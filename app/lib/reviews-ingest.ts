@@ -75,6 +75,18 @@ const toString = (value: unknown): string | null => {
   return null;
 };
 
+const toNullableString = (value: unknown): string | null => {
+  const normalized = toString(value);
+  if (!normalized) {
+    return null;
+  }
+  const lowered = normalized.toLowerCase();
+  if (lowered === "null" || lowered === "undefined") {
+    return null;
+  }
+  return normalized;
+};
+
 const WORD_NUMBERS: Record<string, number> = {
   zero: 0,
   one: 1,
@@ -187,8 +199,9 @@ const normalizeReview = (
       : null;
 
   const ownerResponseText =
-    toString(data.responseFromOwnerText) ?? toString(ownerResponse?.text);
-  const ownerResponseDate = toString(data.responseFromOwnerDate);
+    toNullableString(data.responseFromOwnerText) ??
+    toNullableString(ownerResponse?.text);
+  const ownerResponseDate = toNullableString(data.responseFromOwnerDate);
 
   const placeInfo =
     data.placeInfo && isRecord(data.placeInfo) ? data.placeInfo : null;

@@ -10,7 +10,7 @@ import {
   extractPromptInput,
   generateReply,
 } from "@/app/lib/review-draft";
-import { getReplyPrompt } from "@/app/lib/settings";
+import { getReplySettings } from "@/app/lib/settings";
 
 export const runtime = "nodejs";
 
@@ -120,8 +120,10 @@ export async function POST(request: Request) {
     );
 
     const items = (response.Items as Record<string, unknown>[] | undefined) ?? [];
+    const replySettings = items.length > 0 ? await getReplySettings() : null;
     const settingsPrompt =
-      items.length > 0 && !promptOverride ? await getReplyPrompt() : null;
+      items.length > 0 && !promptOverride ? replySettings?.prompt ?? null : null;
+    const preferredLanguage = replySettings?.preferredLanguage ?? null;
     const results = {
       scanned: items.length,
       processed: 0,
@@ -141,7 +143,11 @@ export async function POST(request: Request) {
         }
 
         const prompt = buildUserPrompt(input, promptOverride ?? settingsPrompt);
-        const reply = await generateReply(prompt, input.reviewText);
+        const reply = await generateReply(
+          prompt,
+          input.reviewText,
+          preferredLanguage
+        );
         const updateResult = await updateReply(input.reviewKey, reply);
 
         if (updateResult.updated) {

@@ -24,6 +24,7 @@ type SettingsRecord = {
   tripAdvisorUrl: string;
   syncTime: string;
   replyPrompt: string;
+  preferredLanguage: string;
   autoDraftReplies: boolean;
   autoPostHighStars: boolean;
   holdLowStars: boolean;
@@ -41,6 +42,7 @@ const DEFAULT_SETTINGS: SettingsRecord = {
   syncTime: "2:00 AM",
   replyPrompt:
     "Write a warm, concise reply. Mention the guest by name, thank them, and reference one detail from the review. Keep under 60 words.",
+  preferredLanguage: "English",
   autoDraftReplies: true,
   autoPostHighStars: false,
   holdLowStars: true,
@@ -92,6 +94,11 @@ const pickSettings = (payload: unknown) => {
   const replyPrompt = toString(data.replyPrompt);
   if (replyPrompt) {
     result.replyPrompt = replyPrompt;
+  }
+
+  const preferredLanguage = toString(data.preferredLanguage);
+  if (preferredLanguage) {
+    result.preferredLanguage = preferredLanguage;
   }
 
   const replyTone = toString(data.replyTone);

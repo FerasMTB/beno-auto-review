@@ -7,7 +7,7 @@ import {
   generateReply,
 } from "@/app/lib/review-draft";
 import { extractReviewsPayload, ingestReviews } from "@/app/lib/reviews-ingest";
-import { getReplyPrompt } from "@/app/lib/settings";
+import { getReplySettings } from "@/app/lib/settings";
 
 export const runtime = "nodejs";
 
@@ -81,7 +81,8 @@ const updateDraftReply = async (
 
 const autoGenerateReplies = async (
   reviews: unknown[],
-  settingsPrompt: string | null
+  settingsPrompt: string | null,
+  preferredLanguage: string | null
 ) => {
   const results = {
     processed: 0,
@@ -103,7 +104,11 @@ const autoGenerateReplies = async (
       }
 
       const prompt = buildUserPrompt(input, settingsPrompt);
-      const reply = await generateReply(prompt, input.reviewText);
+      const reply = await generateReply(
+        prompt,
+        input.reviewText,
+        preferredLanguage
+      );
 
       const status =
         input.rating !== null && input.rating < AUTO_POST_THRESHOLD
@@ -160,8 +165,12 @@ export async function POST(request: Request) {
     const results = await ingestReviews(reviews, {
       defaultSource: "TripAdvisor",
     });
-    const settingsPrompt = await getReplyPrompt();
-    const automation = await autoGenerateReplies(reviews, settingsPrompt);
+    const replySettings = await getReplySettings();
+    const automation = await autoGenerateReplies(
+      reviews,
+      replySettings.prompt,
+      replySettings.preferredLanguage
+    );
     return NextResponse.json(
       { ok: true, ...results, automation },
       { status: 200 }

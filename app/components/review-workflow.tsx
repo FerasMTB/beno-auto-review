@@ -97,6 +97,26 @@ export default function ReviewWorkflow({
     window.open(current.link, "_blank", "noopener,noreferrer");
   }, [current, showMessage]);
 
+  const handleOpenWithCopy = useCallback(() => {
+    if (!current?.link) {
+      showMessage("No review link");
+      return;
+    }
+
+    if (!draftReply) {
+      showMessage("No reply to copy");
+      window.open(current.link, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    navigator.clipboard
+      .writeText(draftReply)
+      .then(() => showMessage("Reply copied"))
+      .catch(() => showMessage("Copy failed"));
+
+    window.open(current.link, "_blank", "noopener,noreferrer");
+  }, [current, draftReply, showMessage]);
+
   const handleDraft = useCallback(async () => {
     if (!current) {
       return;
@@ -211,7 +231,7 @@ export default function ReviewWorkflow({
       }
       if (event.key === "o" || event.key === "O") {
         event.preventDefault();
-        handleOpen();
+        void handleOpenWithCopy();
       }
       if (event.key === "d" || event.key === "D") {
         event.preventDefault();
@@ -225,7 +245,15 @@ export default function ReviewWorkflow({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleCopy, handleDraft, handleOpen, handleSend, moveNext, movePrev]);
+  }, [
+    handleCopy,
+    handleDraft,
+    handleOpen,
+    handleOpenWithCopy,
+    handleSend,
+    moveNext,
+    movePrev,
+  ]);
 
   if (needsReview.length === 0) {
     return (

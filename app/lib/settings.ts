@@ -10,6 +10,7 @@ const SETTINGS_ID = "default";
 
 const DEFAULT_REPLY_PROMPT =
   "Write a warm, concise reply. Mention the guest by name, thank them, and reference one detail from the review. Keep under 60 words.";
+const DEFAULT_PREFERRED_LANGUAGE = "English";
 
 const dynamoClient = new DynamoDBClient({ region: REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -23,8 +24,16 @@ const toPrompt = (value: unknown) => {
 };
 
 export const getReplyPrompt = async () => {
+  const settings = await getReplySettings();
+  return settings.prompt;
+};
+
+export const getReplySettings = async () => {
   if (!TABLE_NAME) {
-    return DEFAULT_REPLY_PROMPT;
+    return {
+      prompt: DEFAULT_REPLY_PROMPT,
+      preferredLanguage: DEFAULT_PREFERRED_LANGUAGE,
+    };
   }
 
   try {
@@ -35,10 +44,16 @@ export const getReplyPrompt = async () => {
       })
     );
 
-    return (
-      toPrompt(response.Item?.replyPrompt) ?? DEFAULT_REPLY_PROMPT
-    );
+    return {
+      prompt: toPrompt(response.Item?.replyPrompt) ?? DEFAULT_REPLY_PROMPT,
+      preferredLanguage:
+        toPrompt(response.Item?.preferredLanguage) ??
+        DEFAULT_PREFERRED_LANGUAGE,
+    };
   } catch {
-    return DEFAULT_REPLY_PROMPT;
+    return {
+      prompt: DEFAULT_REPLY_PROMPT,
+      preferredLanguage: DEFAULT_PREFERRED_LANGUAGE,
+    };
   }
 };
