@@ -11,7 +11,8 @@ type ReviewWorkflowProps = {
     reviewKey: string | null,
     reply: string,
     replyOriginal?: string | null,
-    replyTranslated?: string | null
+    replyTranslated?: string | null,
+    reviewTranslated?: string | null
   ) => void;
   onStatusUpdate?: (reviewKey: string | null, status: ReviewStatus) => void;
 };
@@ -43,6 +44,8 @@ export default function ReviewWorkflow({
   const [draftReplyOriginal, setDraftReplyOriginal] = useState<string | null>(null);
   const [draftReplyTranslated, setDraftReplyTranslated] =
     useState<string | null>(null);
+  const [draftReviewTranslated, setDraftReviewTranslated] =
+    useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [postError, setPostError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -62,11 +65,13 @@ export default function ReviewWorkflow({
     setDraftReply(current?.reply ?? null);
     setDraftReplyOriginal(current?.replyOriginal ?? null);
     setDraftReplyTranslated(current?.replyTranslated ?? null);
+    setDraftReviewTranslated(current?.reviewTranslated ?? null);
     setIsPosted(current?.status === "posted");
   }, [
     current?.reply,
     current?.replyOriginal,
     current?.replyTranslated,
+    current?.reviewTranslated,
     current?.id,
     current?.status,
   ]);
@@ -161,6 +166,7 @@ export default function ReviewWorkflow({
         reply?: string;
         replyOriginal?: string | null;
         replyTranslated?: string | null;
+        reviewTranslated?: string | null;
         error?: string;
       };
 
@@ -174,11 +180,13 @@ export default function ReviewWorkflow({
         setDraftReply(data.reply);
         setDraftReplyOriginal(data.replyOriginal ?? null);
         setDraftReplyTranslated(data.replyTranslated ?? null);
+        setDraftReviewTranslated(data.reviewTranslated ?? null);
         onReplyUpdate?.(
           updateKey,
           data.reply,
           data.replyOriginal ?? null,
-          data.replyTranslated ?? null
+          data.replyTranslated ?? null,
+          data.reviewTranslated ?? null
         );
         showMessage("Reply drafted");
       }
@@ -323,6 +331,11 @@ export default function ReviewWorkflow({
           ? `"${current.review}"`
           : "No review text was provided."}
       </p>
+      {draftReviewTranslated ? (
+        <p className="mt-3 text-base leading-7 text-[var(--color-ink)]">
+          {`"${draftReviewTranslated}"`}
+        </p>
+      ) : null}
 
       <div className="mt-5 rounded-2xl border border-[var(--color-stroke)] bg-[var(--color-soft)] p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">

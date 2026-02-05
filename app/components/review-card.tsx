@@ -18,6 +18,8 @@ export default function ReviewCard({ review }: ReviewCardProps) {
   const [draftReply, setDraftReply] = useState<string | null>(
     review.reply ?? null
   );
+  const [draftReviewTranslated, setDraftReviewTranslated] =
+    useState<string | null>(review.reviewTranslated ?? null);
   const [draftReplyOriginal, setDraftReplyOriginal] = useState<string | null>(
     review.replyOriginal ?? null
   );
@@ -36,9 +38,15 @@ export default function ReviewCard({ review }: ReviewCardProps) {
 
   useEffect(() => {
     setDraftReply(review.reply ?? null);
+    setDraftReviewTranslated(review.reviewTranslated ?? null);
     setDraftReplyOriginal(review.replyOriginal ?? null);
     setDraftReplyTranslated(review.replyTranslated ?? null);
-  }, [review.reply, review.replyOriginal, review.replyTranslated]);
+  }, [
+    review.reply,
+    review.reviewTranslated,
+    review.replyOriginal,
+    review.replyTranslated,
+  ]);
 
   const showPostMessage = (message: string) => {
     setPostMessage(message);
@@ -72,6 +80,7 @@ export default function ReviewCard({ review }: ReviewCardProps) {
         reply?: string;
         replyOriginal?: string | null;
         replyTranslated?: string | null;
+        reviewTranslated?: string | null;
         error?: string;
       };
 
@@ -81,6 +90,7 @@ export default function ReviewCard({ review }: ReviewCardProps) {
 
       if (data.reply) {
         setDraftReply(data.reply);
+        setDraftReviewTranslated(data.reviewTranslated ?? null);
         setDraftReplyOriginal(data.replyOriginal ?? null);
         setDraftReplyTranslated(data.replyTranslated ?? null);
       }
@@ -166,6 +176,11 @@ export default function ReviewCard({ review }: ReviewCardProps) {
           ? `"${review.review}"`
           : "No review text was provided."}
       </p>
+      {draftReviewTranslated ? (
+        <p className="mt-3 text-base leading-7 text-[var(--color-ink)]">
+          {`"${draftReviewTranslated}"`}
+        </p>
+      ) : null}
 
       <div className="mt-5 rounded-2xl border border-[var(--color-stroke)] bg-[var(--color-soft)] p-4">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">

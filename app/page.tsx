@@ -13,6 +13,7 @@ type ApiReviewItem = {
   reviewedAt?: string;
   status?: string;
   review?: string | null;
+  reviewTranslated?: string | null;
   reply?: string | null;
   replyOriginal?: string | null;
   replyTranslated?: string | null;
@@ -101,6 +102,7 @@ const mapReviewItem = (item: ApiReviewItem): ReviewItem => {
     rating: typeof item.rating === "number" ? item.rating : null,
     date: formatDate(reviewedAt),
     review: item.review ?? null,
+    reviewTranslated: item.reviewTranslated ?? null,
     reply: item.reply ?? null,
     replyOriginal: item.replyOriginal ?? null,
     replyTranslated: item.replyTranslated ?? null,
@@ -133,6 +135,7 @@ const matchesSearch = (review: ReviewItem, query: string) => {
   const haystack = [
     review.author,
     review.review ?? "",
+    review.reviewTranslated ?? "",
     review.reply ?? "",
     review.replyOriginal ?? "",
     review.replyTranslated ?? "",
@@ -259,7 +262,8 @@ export default function DashboardPage() {
     reviewKey: string | null,
     reply: string,
     replyOriginal?: string | null,
-    replyTranslated?: string | null
+    replyTranslated?: string | null,
+    reviewTranslated?: string | null
   ) => {
     if (!reviewKey) {
       return;
@@ -272,6 +276,7 @@ export default function DashboardPage() {
             reply,
             replyOriginal: replyOriginal ?? review.replyOriginal ?? null,
             replyTranslated: replyTranslated ?? review.replyTranslated ?? null,
+            reviewTranslated: reviewTranslated ?? review.reviewTranslated ?? null,
           };
         }
         const fallbackKey = `${review.source}#${review.id}`;
@@ -281,6 +286,7 @@ export default function DashboardPage() {
             reply,
             replyOriginal: replyOriginal ?? review.replyOriginal ?? null,
             replyTranslated: replyTranslated ?? review.replyTranslated ?? null,
+            reviewTranslated: reviewTranslated ?? review.reviewTranslated ?? null,
           };
         }
         return review;

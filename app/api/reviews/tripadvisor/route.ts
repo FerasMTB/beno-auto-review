@@ -52,17 +52,19 @@ const updateDraftReply = async (
         TableName: TABLE_NAME,
         Key: { reviewId: reviewKey },
         UpdateExpression:
-          "SET #reply = :reply, #status = :status, #replyOriginal = :replyOriginal, #replyTranslated = :replyTranslated, updatedAt = :updatedAt, replyGeneratedAt = :replyGeneratedAt",
+          "SET #reply = :reply, #status = :status, #replyOriginal = :replyOriginal, #replyTranslated = :replyTranslated, #reviewTranslated = :reviewTranslated, updatedAt = :updatedAt, replyGeneratedAt = :replyGeneratedAt",
         ExpressionAttributeNames: {
           "#reply": "reply",
           "#status": "status",
           "#replyOriginal": "replyOriginal",
           "#replyTranslated": "replyTranslated",
+          "#reviewTranslated": "reviewTranslated",
         },
         ExpressionAttributeValues: {
           ":reply": reply.reply,
           ":replyOriginal": reply.replyOriginal ?? null,
           ":replyTranslated": reply.replyTranslated ?? null,
+          ":reviewTranslated": reply.reviewTranslated ?? null,
           ":status": status,
           ":updatedAt": nowIso,
           ":replyGeneratedAt": nowIso,

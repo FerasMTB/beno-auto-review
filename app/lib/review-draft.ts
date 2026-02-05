@@ -12,6 +12,8 @@ export type GeneratedReply = {
   reply: string;
   replyOriginal: string | null;
   replyTranslated: string | null;
+  reviewOriginal: string | null;
+  reviewTranslated: string | null;
 };
 
 const REPLY_WEBHOOK_URL =
@@ -178,6 +180,11 @@ const getReplyDataFromObject = (
   const replyTranslated =
     toTrimmedString(text.reply_translated) ??
     toTrimmedString(text.replyTranslated);
+  const reviewOriginal =
+    toTrimmedString(text.review) ?? toTrimmedString(text.reviewText);
+  const reviewTranslated =
+    toTrimmedString(text.review_translated) ??
+    toTrimmedString(text.reviewTranslated);
   const preferredFlag =
     typeof text.in_preferd_language === "boolean"
       ? text.in_preferd_language
@@ -199,6 +206,8 @@ const getReplyDataFromObject = (
     reply: preferredReply,
     replyOriginal,
     replyTranslated,
+    reviewOriginal,
+    reviewTranslated,
   };
 };
 
@@ -212,6 +221,8 @@ const getReplyDataFromPayload = (payload: unknown): GeneratedReply | null => {
       reply: trimmed,
       replyOriginal: trimmed,
       replyTranslated: null,
+      reviewOriginal: null,
+      reviewTranslated: null,
     };
   };
 
