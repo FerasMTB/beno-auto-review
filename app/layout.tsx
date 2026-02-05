@@ -4,13 +4,13 @@ import "./globals.css";
 
 const notoSans = Noto_Sans({
   variable: "--font-primary",
-  subsets: ["latin", "arabic"],
+  subsets: ["latin", "latin-ext"],
   weight: ["300", "400", "500", "600", "700"],
 });
 
 const notoSansDisplay = Noto_Sans({
   variable: "--font-display",
-  subsets: ["latin", "arabic"],
+  subsets: ["latin", "latin-ext"],
   weight: ["600", "700"],
 });
 
