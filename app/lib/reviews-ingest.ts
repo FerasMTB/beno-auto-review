@@ -218,6 +218,8 @@ const normalizeReview = (
   const placeName =
     toString(placeInfo?.name) ?? (isGoogle ? toString(data.title) : null);
   const reviewTitle = isGoogle ? null : toString(data.title);
+  const reviewTranslated =
+    toString(data.textTranslated) ?? toString((data as Record<string, unknown>).reviewTranslated);
   const authorName =
     toString(data.authorName) ??
     toString(data.reviewerName) ??
@@ -236,6 +238,7 @@ const normalizeReview = (
       toString(data.text) ??
       toString(data.textTranslated) ??
       toString(data.review),
+    ...(reviewTranslated ? { reviewTranslated } : {}),
     reply: replyText,
     ...(replyPostedAt ? { replyPostedAt } : {}),
     rating,
