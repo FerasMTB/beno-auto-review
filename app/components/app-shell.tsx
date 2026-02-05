@@ -3,15 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { getI18n } from "../lib/i18n";
 
 const navigation = [
   { href: "/", label: "Dashboard" },
+  { href: "/reports", label: "Reports" },
   { href: "/settings", label: "Settings" },
 ];
 
 type AppShellProps = {
   title: string;
   subtitle: string;
+  preferredLanguage?: string;
   actions?: ReactNode;
   children: ReactNode;
 };
@@ -19,13 +22,15 @@ type AppShellProps = {
 export default function AppShell({
   title,
   subtitle,
+  preferredLanguage,
   actions,
   children,
 }: AppShellProps) {
   const pathname = usePathname();
+  const { t, dir } = getI18n(preferredLanguage);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" dir={dir}>
       <div className="relative isolate overflow-hidden">
         <div className="pointer-events-none absolute -left-32 top-[-120px] h-72 w-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(212,106,74,0.35),transparent_70%)] blur-3xl animate-[float_12s_ease-in-out_infinite]" />
         <div className="pointer-events-none absolute -right-24 top-24 h-96 w-96 rounded-full bg-[radial-gradient(circle_at_center,rgba(31,122,107,0.35),transparent_70%)] blur-3xl animate-[float_14s_ease-in-out_infinite]" />
@@ -38,10 +43,10 @@ export default function AppShell({
                 </div>
                 <div>
                   <p className="font-display text-lg text-[var(--color-ink)]">
-                    AutoReview
+                    {t("shell_autoreview")}
                   </p>
                   <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                    Daily sync via Amplify
+                    {t("shell_daily_sync")}
                   </p>
                 </div>
               </div>
@@ -59,7 +64,11 @@ export default function AppShell({
                           : "border-[var(--color-stroke)] bg-white/60 text-[var(--color-ink)] hover:-translate-y-[1px] hover:border-[var(--color-ink)]"
                       }`}
                     >
-                      {item.label}
+                      {item.href === "/"
+                        ? t("nav_dashboard")
+                        : item.href === "/reports"
+                          ? t("nav_reports")
+                          : t("nav_settings")}
                     </Link>
                   );
                 })}
@@ -71,7 +80,7 @@ export default function AppShell({
               <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                    Review operations
+                    {t("shell_review_ops")}
                   </p>
                   <h1 className="font-display text-3xl text-[var(--color-ink)] sm:text-4xl">
                     {title}

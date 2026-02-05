@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { Review, ReviewSource } from "../lib/types";
+import type { Review, ReviewSource, ReviewStatus } from "../lib/types";
 import StatusPill from "./status-pill";
+import { getI18n } from "../lib/i18n";
 
 const sourceStyles: Record<ReviewSource, string> = {
   Google: "bg-[var(--color-accent-cool)]/15 text-[var(--color-accent-cool-strong)]",
@@ -12,9 +13,16 @@ const sourceStyles: Record<ReviewSource, string> = {
 
 type ReviewCardProps = {
   review: Review;
+  preferredLanguage?: string;
+  onStatusUpdate?: (reviewKey: string | null, status: ReviewStatus) => void;
 };
 
-export default function ReviewCard({ review }: ReviewCardProps) {
+export default function ReviewCard({
+  review,
+  preferredLanguage,
+  onStatusUpdate,
+}: ReviewCardProps) {
+  const { t, dir } = getI18n(preferredLanguage);
   const [draftReply, setDraftReply] = useState<string | null>(
     review.reply ?? null
   );
@@ -31,6 +39,29 @@ export default function ReviewCard({ review }: ReviewCardProps) {
   const [postError, setPostError] = useState<string | null>(null);
   const [postMessage, setPostMessage] = useState<string | null>(null);
   const [isPosted, setIsPosted] = useState(review.status === "posted");
+  const [isMarkingPosted, setIsMarkingPosted] = useState(false);
+
+  const renderStars = (rating: number | null) => {
+    const safeRating = rating ?? 0;
+    const filled = Math.max(0, Math.min(5, Math.round(safeRating)));
+    return (
+      <div className="flex items-center gap-1 text-base">
+        {Array.from({ length: 5 }).map((_, idx) => (
+          <span
+            key={idx}
+            className={
+              idx < filled
+                ? "text-[var(--color-accent-strong)]"
+                : "text-[var(--color-muted)]/40"
+            }
+            aria-hidden="true"
+          >
+            ★
+          </span>
+        ))}
+      </div>
+    );
+  };
 
   useEffect(() => {
     setIsPosted(review.status === "posted");
@@ -85,7 +116,7 @@ export default function ReviewCard({ review }: ReviewCardProps) {
       };
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to draft reply");
+        throw new Error(data.error || t("failed_draft_reply"));
       }
 
       if (data.reply) {
@@ -96,7 +127,7 @@ export default function ReviewCard({ review }: ReviewCardProps) {
       }
     } catch (error) {
       setDraftError(
-        error instanceof Error ? error.message : "Failed to draft reply"
+        error instanceof Error ? error.message : t("failed_draft_reply")
       );
     } finally {
       setIsDrafting(false);
@@ -107,12 +138,12 @@ export default function ReviewCard({ review }: ReviewCardProps) {
     const reply = draftReply?.trim();
 
     if (!reply) {
-      setPostError("No reply to post");
+      setPostError(t("no_reply_to_send"));
       return;
     }
 
     if (review.source !== "Google") {
-      setPostError("Only Google reviews can be posted");
+      setPostError(t("only_google_post"));
       return;
     }
 
@@ -135,17 +166,56 @@ export default function ReviewCard({ review }: ReviewCardProps) {
       const data = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to send reply");
+        throw new Error(data.error || t("failed_send_reply"));
       }
 
       setIsPosted(true);
-      showPostMessage("Reply sent");
+      showPostMessage(t("reply_sent"));
     } catch (error) {
       setPostError(
-        error instanceof Error ? error.message : "Failed to send reply"
+        error instanceof Error ? error.message : t("failed_send_reply")
       );
     } finally {
       setIsPosting(false);
+    }
+  };
+
+  const handleMarkPosted = async () => {
+    if (review.source === "Google") {
+      return;
+    }
+    setIsMarkingPosted(true);
+    setPostError(null);
+    setPostMessage(null);
+
+    try {
+      const response = await fetch("/api/reviews/mark-posted", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewId: review.id,
+          reviewKey: review.reviewKey,
+          reply: draftReply ?? "",
+          source: review.source,
+        }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error || t("failed_send_reply"));
+      }
+
+      setIsPosted(true);
+      const updateKey = review.reviewKey ?? `${review.source}#${review.id}`;
+      onStatusUpdate?.(updateKey, "posted");
+      showPostMessage(t("marked_posted"));
+    } catch (error) {
+      setPostError(
+        error instanceof Error ? error.message : t("failed_send_reply")
+      );
+    } finally {
+      setIsMarkingPosted(false);
     }
   };
 
@@ -159,42 +229,46 @@ export default function ReviewCard({ review }: ReviewCardProps) {
             >
               {review.source}
             </span>
-            <span className="text-[var(--color-muted)]">
-              {review.rating !== null ? review.rating.toFixed(1) : "N/A"} rating
-            </span>
             <span className="text-[var(--color-muted)]">{review.date}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-muted)]">
+            {renderStars(review.rating)}
+            <span>
+              {review.rating !== null ? review.rating.toFixed(1) : t("na")}{" "}
+              {t("rating_label")}
+            </span>
           </div>
           <div className="text-lg font-semibold text-[var(--color-ink)]">
             {review.author}
           </div>
         </div>
-        <StatusPill status={review.status} />
+        <StatusPill status={review.status} preferredLanguage={preferredLanguage} />
       </div>
 
-      <p className="mt-4 text-base leading-7 text-[var(--color-ink)]">
+      <p className="mt-4 text-base leading-7 text-[var(--color-ink)]" dir={dir}>
         {review.review
           ? `"${review.review}"`
-          : "No review text was provided."}
+          : t("no_review_text")}
       </p>
       {draftReviewTranslated ? (
-        <p className="mt-3 text-base leading-7 text-[var(--color-ink)]">
+        <p className="mt-3 text-base leading-7 text-[var(--color-ink)]" dir={dir}>
           {`"${draftReviewTranslated}"`}
         </p>
       ) : null}
 
       <div className="mt-5 rounded-2xl border border-[var(--color-stroke)] bg-[var(--color-soft)] p-4">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-          {isPosted ? "Reply posted" : "Draft reply"}
+          {isPosted ? t("reply_posted") : t("draft_reply")}
         </p>
-        <p className="mt-2 text-sm leading-6 text-[var(--color-ink)]">
-          {draftReply ?? "No reply drafted yet."}
+        <p className="mt-2 text-sm leading-6 text-[var(--color-ink)]" dir={dir}>
+          {draftReply ?? t("no_reply_drafted")}
         </p>
         {draftReplyOriginal && draftReplyOriginal !== draftReply ? (
           <div className="mt-3">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-              Original reply
+              {t("original_reply")}
             </p>
-            <p className="mt-1 text-sm leading-6 text-[var(--color-ink)]">
+            <p className="mt-1 text-sm leading-6 text-[var(--color-ink)]" dir={dir}>
               {draftReplyOriginal}
             </p>
           </div>
@@ -202,9 +276,9 @@ export default function ReviewCard({ review }: ReviewCardProps) {
         {draftReplyTranslated && draftReplyTranslated !== draftReply ? (
           <div className="mt-3">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-              Translated reply
+              {t("translated_reply")}
             </p>
-            <p className="mt-1 text-sm leading-6 text-[var(--color-ink)]">
+            <p className="mt-1 text-sm leading-6 text-[var(--color-ink)]" dir={dir}>
               {draftReplyTranslated}
             </p>
           </div>
@@ -227,20 +301,22 @@ export default function ReviewCard({ review }: ReviewCardProps) {
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        {review.link ? (
-          <Link
-            href={review.link}
-            className="text-sm font-semibold text-[var(--color-accent-strong)] underline-offset-4 hover:underline"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open review
-          </Link>
-        ) : (
-          <span className="text-sm text-[var(--color-muted)]">
-            No review link
-          </span>
-        )}
+        {review.source !== "Google" ? (
+          review.link ? (
+            <Link
+              href={review.link}
+              className="text-sm font-semibold text-[var(--color-accent-strong)] underline-offset-4 hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("open_review")}
+            </Link>
+          ) : (
+            <span className="text-sm text-[var(--color-muted)]">
+              {t("no_review_link")}
+            </span>
+          )
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <button
             className="rounded-full border border-[var(--color-stroke)] bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-ink)] transition hover:-translate-y-[1px] hover:border-[var(--color-ink)] disabled:cursor-not-allowed disabled:opacity-60"
@@ -248,16 +324,29 @@ export default function ReviewCard({ review }: ReviewCardProps) {
             disabled={isDrafting || isPosted}
             type="button"
           >
-            {isDrafting ? "Drafting..." : isPosted ? "Reply posted" : "Draft with AI"}
+            {isDrafting
+              ? t("drafting")
+              : isPosted
+                ? t("reply_posted")
+                : t("draft_with_ai_button")}
           </button>
-          {isPosted ? null : (
+          {isPosted ? null : review.source === "Google" ? (
             <button
               className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-canvas)] transition hover:-translate-y-[1px] hover:bg-[var(--color-ink-strong)] disabled:cursor-not-allowed disabled:opacity-60"
               onClick={handlePostReply}
               disabled={isPosting || !draftReply || review.source !== "Google"}
               type="button"
             >
-              {isPosting ? "Sending..." : "Send reply"}
+              {isPosting ? t("sending") : t("send_reply_button")}
+            </button>
+          ) : (
+            <button
+              className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-canvas)] transition hover:-translate-y-[1px] hover:bg-[var(--color-ink-strong)] disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={handleMarkPosted}
+              disabled={isMarkingPosted}
+              type="button"
+            >
+              {isMarkingPosted ? t("marking_posted") : t("mark_posted")}
             </button>
           )}
         </div>

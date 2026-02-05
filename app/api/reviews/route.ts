@@ -25,6 +25,25 @@ const parseLimit = (value: string | null) => {
   return 25;
 };
 
+const encodeCursor = (key: Record<string, unknown> | undefined) => {
+  if (!key) {
+    return null;
+  }
+  return Buffer.from(JSON.stringify(key), "utf8").toString("base64");
+};
+
+const decodeCursor = (value: string | null) => {
+  if (!value) {
+    return null;
+  }
+  try {
+    const raw = Buffer.from(value, "base64").toString("utf8");
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+};
+
 const sortByReviewedAt = (items: Record<string, unknown>[]) => {
   return items.sort((a, b) => {
     const aValue = typeof a.reviewedAt === "string" ? a.reviewedAt : "";
@@ -48,6 +67,7 @@ export async function GET(request: Request) {
   const limit = parseLimit(searchParams.get("limit"));
   const status = searchParams.get("status");
   const source = searchParams.get("source");
+  const cursor = decodeCursor(searchParams.get("cursor"));
 
   try {
     if (status) {
@@ -60,6 +80,7 @@ export async function GET(request: Request) {
           ExpressionAttributeValues: { ":status": status },
           Limit: limit,
           ScanIndexForward: false,
+          ExclusiveStartKey: cursor ?? undefined,
         })
       );
 
@@ -67,6 +88,7 @@ export async function GET(request: Request) {
         ok: true,
         items: response.Items ?? [],
         count: response.Count ?? 0,
+        nextCursor: encodeCursor(response.LastEvaluatedKey) ?? null,
       });
     }
 
@@ -80,6 +102,7 @@ export async function GET(request: Request) {
           ExpressionAttributeValues: { ":source": source },
           Limit: limit,
           ScanIndexForward: false,
+          ExclusiveStartKey: cursor ?? undefined,
         })
       );
 
@@ -87,6 +110,7 @@ export async function GET(request: Request) {
         ok: true,
         items: response.Items ?? [],
         count: response.Count ?? 0,
+        nextCursor: encodeCursor(response.LastEvaluatedKey) ?? null,
       });
     }
 
@@ -94,6 +118,7 @@ export async function GET(request: Request) {
       new ScanCommand({
         TableName: TABLE_NAME,
         Limit: limit,
+        ExclusiveStartKey: cursor ?? undefined,
       })
     );
 
@@ -105,6 +130,7 @@ export async function GET(request: Request) {
       ok: true,
       items,
       count: response.Count ?? items.length,
+      nextCursor: encodeCursor(response.LastEvaluatedKey) ?? null,
     });
   } catch (error) {
     const typedError = error as { message?: string };

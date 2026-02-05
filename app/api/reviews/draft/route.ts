@@ -3,6 +3,7 @@ import { DynamoDBDocumentClient, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { NextResponse } from "next/server";
 import {
   buildUserPrompt,
+  buildChangePrompt,
   extractPromptInput,
   generateReply,
   type GeneratedReply,
@@ -85,16 +86,52 @@ export async function POST(request: Request) {
     isRecord(payload) && typeof payload.prompt === "string"
       ? payload.prompt.trim() || null
       : null;
+  const askForChanges =
+    isRecord(payload) &&
+    (typeof payload.ask_for_changes === "boolean" ||
+      typeof payload.need_changes === "boolean")
+      ? Boolean(payload.ask_for_changes ?? payload.need_changes)
+      : false;
+  const changeRequest =
+    isRecord(payload) && typeof payload.changes === "string"
+      ? payload.changes.trim()
+      : null;
+  const previousReply =
+    isRecord(payload) && typeof payload.previousReply === "string"
+      ? payload.previousReply.trim()
+      : null;
 
   try {
     const input = extractPromptInput(reviewPayload);
     const replySettings = await getReplySettings();
     const settingsPrompt = promptOverride ? null : replySettings.prompt;
-    const prompt = buildUserPrompt(input, promptOverride ?? settingsPrompt);
+    const prompt =
+      askForChanges && promptOverride
+        ? promptOverride
+        : askForChanges && changeRequest && previousReply
+          ? buildChangePrompt(
+              input,
+              previousReply,
+              changeRequest,
+              promptOverride ?? settingsPrompt,
+              replySettings.preferredLanguage
+            )
+          : buildUserPrompt(
+              input,
+              promptOverride ?? settingsPrompt,
+              replySettings.preferredLanguage
+            );
     const replyData = await generateReply(
       prompt,
       input.reviewText,
-      replySettings.preferredLanguage
+      replySettings.preferredLanguage,
+      askForChanges
+        ? {
+            needChanges: true,
+            askForChanges: true,
+            previousReply,
+          }
+        : {}
     );
 
     const updateResult =

@@ -144,9 +144,11 @@ export const extractPromptInput = (payload: unknown): PromptInput => {
 
 export const buildUserPrompt = (
   input: PromptInput,
-  customPrompt?: string | null
+  customPrompt?: string | null,
+  preferredLanguage?: string | null
 ) => {
   const lines = [
+    `Preferred language: ${preferredLanguage ?? "English"}`,
     `Source: ${input.source ?? "Unknown"}`,
     `Reviewer: ${input.authorName ?? "Guest"}`,
     `Rating: ${input.rating ?? "N/A"}`,
@@ -157,6 +159,29 @@ export const buildUserPrompt = (
   return `${customPrompt ?? DEFAULT_PROMPT}\n\nReview details:\n${lines.join(
     "\n"
   )}\n\nReply:`;
+};
+
+export const buildChangePrompt = (
+  input: PromptInput,
+  currentReply: string,
+  changeRequest: string,
+  customPrompt?: string | null,
+  preferredLanguage?: string | null
+) => {
+  const lines = [
+    `Preferred language: ${preferredLanguage ?? "English"}`,
+    `Source: ${input.source ?? "Unknown"}`,
+    `Reviewer: ${input.authorName ?? "Guest"}`,
+    `Rating: ${input.rating ?? "N/A"}`,
+    `Title: ${input.title ?? "N/A"}`,
+    `Review: ${input.reviewText ?? "(no text provided)"}`,
+    `Current reply: ${currentReply}`,
+    `Requested changes: ${changeRequest}`,
+  ];
+
+  return `${customPrompt ?? DEFAULT_PROMPT}\n\nReview update request:\n${lines.join(
+    "\n"
+  )}\n\nRewrite the reply with the requested changes:`;
 };
 
 const resolvePreferredReply = (
@@ -308,10 +333,17 @@ const getErrorFromPayload = (payload: unknown) => {
   return null;
 };
 
+type GenerateReplyFlags = {
+  needChanges?: boolean;
+  askForChanges?: boolean;
+  previousReply?: string | null;
+};
+
 export const generateReply = async (
   prompt: string,
   reviewText: string | null,
-  preferredLanguage: string | null = null
+  preferredLanguage: string | null = null,
+  flags: GenerateReplyFlags = {}
 ): Promise<GeneratedReply> => {
   const trimmedLanguage = toTrimmedString(preferredLanguage);
   const response = await fetch(REPLY_WEBHOOK_URL, {
@@ -325,6 +357,11 @@ export const generateReply = async (
       review: reviewText ?? "",
       preferredLanguage: trimmedLanguage ?? undefined,
       preferdLanguage: trimmedLanguage ?? undefined,
+      previousReply: flags.previousReply ?? undefined,
+      need_changes:
+        typeof flags.needChanges === "boolean" ? flags.needChanges : undefined,
+      ask_for_changes:
+        typeof flags.askForChanges === "boolean" ? flags.askForChanges : undefined,
     }),
   });
 

@@ -23,6 +23,25 @@ const toPrompt = (value: unknown) => {
   return trimmed.length ? trimmed : null;
 };
 
+const pickString = (
+  value: Record<string, unknown> | undefined,
+  keys: string[]
+) => {
+  if (!value) {
+    return null;
+  }
+  for (const key of keys) {
+    const candidate = value[key];
+    if (typeof candidate === "string") {
+      const trimmed = candidate.trim();
+      if (trimmed.length) {
+        return trimmed;
+      }
+    }
+  }
+  return null;
+};
+
 export const getReplyPrompt = async () => {
   const settings = await getReplySettings();
   return settings.prompt;
@@ -44,12 +63,29 @@ export const getReplySettings = async () => {
       })
     );
 
+    const item = response.Item as Record<string, unknown> | undefined;
+    const nested =
+      item && typeof item.settings === "object" && item.settings !== null
+        ? (item.settings as Record<string, unknown>)
+        : undefined;
+    const preferredLanguage =
+      pickString(item, [
+        "preferredLanguage",
+        "preferdLanguage",
+        "preferred_language",
+        "preferd_language",
+      ]) ??
+      pickString(nested, [
+        "preferredLanguage",
+        "preferdLanguage",
+        "preferred_language",
+        "preferd_language",
+      ]) ??
+      DEFAULT_PREFERRED_LANGUAGE;
+
     return {
-      prompt: toPrompt(response.Item?.replyPrompt) ?? DEFAULT_REPLY_PROMPT,
-      preferredLanguage:
-        toPrompt(response.Item?.preferredLanguage) ??
-        toPrompt(response.Item?.preferdLanguage) ??
-        DEFAULT_PREFERRED_LANGUAGE,
+      prompt: toPrompt(item?.replyPrompt) ?? DEFAULT_REPLY_PROMPT,
+      preferredLanguage,
     };
   } catch {
     return {

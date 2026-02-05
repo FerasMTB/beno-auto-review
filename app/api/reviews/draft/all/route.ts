@@ -149,7 +149,11 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const prompt = buildUserPrompt(input, promptOverride ?? settingsPrompt);
+        const prompt = buildUserPrompt(
+          input,
+          promptOverride ?? settingsPrompt,
+          preferredLanguage
+        );
         const replyData = await generateReply(
           prompt,
           input.reviewText,

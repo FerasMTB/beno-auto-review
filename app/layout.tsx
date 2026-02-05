@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Mono, Sora } from "next/font/google";
+import { Noto_Sans, Noto_Sans_Mono } from "next/font/google";
 import "./globals.css";
 
-const sora = Sora({
+const notoSans = Noto_Sans({
   variable: "--font-primary",
-  subsets: ["latin"],
+  subsets: ["latin", "arabic"],
   weight: ["300", "400", "500", "600", "700"],
 });
 
-const fraunces = Fraunces({
+const notoSansDisplay = Noto_Sans({
   variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  subsets: ["latin", "arabic"],
+  weight: ["600", "700"],
 });
 
-const plexMono = IBM_Plex_Mono({
+const notoSansMono = Noto_Sans_Mono({
   variable: "--font-code",
   subsets: ["latin"],
   weight: ["400", "600"],
@@ -34,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${sora.variable} ${fraunces.variable} ${plexMono.variable} antialiased`}
+        className={`${notoSans.variable} ${notoSansDisplay.variable} ${notoSansMono.variable} antialiased`}
       >
         {children}
       </body>

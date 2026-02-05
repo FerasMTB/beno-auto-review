@@ -222,7 +222,11 @@ const autoGenerateReplies = async (
         continue;
       }
 
-      const prompt = buildUserPrompt(input, settingsPrompt);
+      const prompt = buildUserPrompt(
+        input,
+        settingsPrompt,
+        preferredLanguage
+      );
       const replyData = await generateReply(
         prompt,
         input.reviewText,

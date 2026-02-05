@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AppShell from "../components/app-shell";
+import { getI18n } from "../lib/i18n";
 
 type SettingsState = {
   googleMapsUrl: string;
@@ -32,21 +33,39 @@ const DEFAULT_SETTINGS: SettingsState = {
   autoPostDelay: "30 minutes",
 };
 
-const SYNC_TIMES = ["2:00 AM", "5:00 AM", "8:00 AM", "12:00 PM", "6:00 PM"];
-const REPLY_TONES = [
-  "Warm and professional",
-  "Friendly and casual",
-  "Short and direct",
+const PREFERRED_LANGUAGES = [
+  "English",
+  "Arabic",
+  "German",
+  "French",
+  "Spanish",
 ];
-const AUTO_POST_DELAYS = ["30 minutes", "2 hours", "6 hours", "Next morning"];
+
+const getStoredLanguage = () => {
+  return "English";
+};
 
 export default function SettingsPage() {
-  const [formState, setFormState] = useState<SettingsState>(DEFAULT_SETTINGS);
+  const [formState, setFormState] = useState<SettingsState>(() => ({
+    ...DEFAULT_SETTINGS,
+    preferredLanguage: getStoredLanguage(),
+  }));
   const [isLoading, setIsLoading] = useState(true);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">(
     "idle"
   );
   const [saveError, setSaveError] = useState<string | null>(null);
+  const { t } = getI18n(formState.preferredLanguage);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const stored = window.localStorage.getItem("preferredLanguage");
+    if (stored && stored.trim().length) {
+      setFormState((prev) => ({ ...prev, preferredLanguage: stored }));
+    }
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -69,11 +88,17 @@ export default function SettingsPage() {
 
         if (isMounted && data.settings) {
           setFormState((prev) => ({ ...prev, ...data.settings }));
+          if (data.settings.preferredLanguage && typeof window !== "undefined") {
+            window.localStorage.setItem(
+              "preferredLanguage",
+              data.settings.preferredLanguage
+            );
+          }
         }
       } catch (error) {
         if (isMounted && !controller.signal.aborted) {
           setSaveError(
-            error instanceof Error ? error.message : "Failed to load settings"
+            error instanceof Error ? error.message : t("failed_load_settings")
           );
         }
       } finally {
@@ -111,7 +136,14 @@ export default function SettingsPage() {
       const data = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to save settings");
+        throw new Error(data.error || t("failed_save_settings"));
+      }
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          "preferredLanguage",
+          formState.preferredLanguage
+        );
       }
 
       setSaveState("saved");
@@ -121,28 +153,29 @@ export default function SettingsPage() {
     } catch (error) {
       setSaveState("error");
       setSaveError(
-        error instanceof Error ? error.message : "Failed to save settings"
+        error instanceof Error ? error.message : t("failed_save_settings")
       );
     }
   };
 
   const statusLabel = useMemo(() => {
     if (saveState === "saving") {
-      return "Saving...";
+      return t("saving");
     }
     if (saveState === "saved") {
-      return "Saved";
+      return t("saved");
     }
     if (saveState === "error") {
-      return "Save failed";
+      return t("save_failed");
     }
     return null;
-  }, [saveState]);
+  }, [saveState, t]);
 
   return (
     <AppShell
-      title="Settings"
-      subtitle="Connect your review sources, tune the reply prompt, and control when auto-posting runs."
+      title={t("settings_title")}
+      subtitle={t("settings_subtitle")}
+      preferredLanguage={formState.preferredLanguage}
       actions={
         <>
           <button
@@ -151,7 +184,7 @@ export default function SettingsPage() {
             onClick={handleSave}
             disabled={isLoading || saveState === "saving"}
           >
-            {saveState === "saving" ? "Saving..." : "Save changes"}
+            {saveState === "saving" ? t("saving") : t("save_changes")}
           </button>
           {statusLabel ? (
             <span
@@ -171,65 +204,10 @@ export default function SettingsPage() {
         <section className="space-y-6">
           <div className="rounded-3xl border border-[var(--color-stroke)] bg-white/70 p-6 shadow-[0_16px_32px_rgba(29,27,22,0.08)] backdrop-blur">
             <h2 className="font-display text-2xl text-[var(--color-ink)]">
-              Review sources
+              {t("reply_prompt")}
             </h2>
             <p className="mt-2 text-sm text-[var(--color-muted)]">
-              Set the public URLs used for daily review discovery.
-            </p>
-            <div className="mt-5 space-y-4 text-sm">
-              <label className="block space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                  Google Maps URL
-                </span>
-                <input
-                  className="w-full rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-ink)]"
-                  type="url"
-                  value={formState.googleMapsUrl}
-                  onChange={(event) =>
-                    handleChange("googleMapsUrl", event.target.value)
-                  }
-                />
-              </label>
-              <label className="block space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                  TripAdvisor URL
-                </span>
-                <input
-                  className="w-full rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-ink)]"
-                  type="url"
-                  value={formState.tripAdvisorUrl}
-                  onChange={(event) =>
-                    handleChange("tripAdvisorUrl", event.target.value)
-                  }
-                />
-              </label>
-              <label className="block space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                  Daily sync time
-                </span>
-                <select
-                  className="w-full rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-ink)]"
-                  value={formState.syncTime}
-                  onChange={(event) =>
-                    handleChange("syncTime", event.target.value)
-                  }
-                >
-                  {SYNC_TIMES.map((time) => (
-                    <option key={time} value={time}>
-                      {time}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-[var(--color-stroke)] bg-white/70 p-6 shadow-[0_16px_32px_rgba(29,27,22,0.08)] backdrop-blur">
-            <h2 className="font-display text-2xl text-[var(--color-ink)]">
-              Reply prompt
-            </h2>
-            <p className="mt-2 text-sm text-[var(--color-muted)]">
-              This prompt guides the ChatGPT draft used for Google replies.
+              {t("reply_prompt_help")}
             </p>
             <div className="mt-5 space-y-3">
               <textarea
@@ -241,22 +219,31 @@ export default function SettingsPage() {
               />
               <label className="block space-y-2 text-sm">
                 <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                  Preferred reply language
+                  {t("preferred_language")}
                 </span>
-                <input
+                <select
                   className="w-full rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-ink)]"
-                  type="text"
                   value={formState.preferredLanguage}
                   onChange={(event) =>
                     handleChange("preferredLanguage", event.target.value)
                   }
-                  placeholder="English"
-                />
+                >
+                  {PREFERRED_LANGUAGES.map((language) => (
+                    <option key={language} value={language}>
+                      {language === "English"
+                        ? t("lang_english")
+                        : language === "Arabic"
+                          ? t("lang_arabic")
+                          : language === "German"
+                            ? t("lang_german")
+                            : language === "French"
+                              ? t("lang_french")
+                              : t("lang_spanish")}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--color-muted)]">
-                <span>Variables: {`{name}`}, {`{rating}`}, {`{source}`}</span>
-                <span>Max length: 60 words</span>
-              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--color-muted)]" />
             </div>
           </div>
         </section>
@@ -264,27 +251,22 @@ export default function SettingsPage() {
         <section className="space-y-6">
           <div className="rounded-3xl border border-[var(--color-stroke)] bg-white/70 p-6 shadow-[0_16px_32px_rgba(29,27,22,0.08)] backdrop-blur">
             <h2 className="font-display text-2xl text-[var(--color-ink)]">
-              Automation controls
+              {t("automation_controls")}
             </h2>
             <p className="mt-2 text-sm text-[var(--color-muted)]">
-              Decide when drafts are created and when replies post automatically.
+              {t("automation_help")}
             </p>
             <div className="mt-5 space-y-3 text-sm">
               {[
                 {
                   key: "autoDraftReplies",
-                  title: "Auto-draft replies",
-                  detail: "Generate a draft as soon as reviews sync.",
-                },
-                {
-                  key: "autoPostHighStars",
-                  title: "Auto-post 4 stars or higher",
-                  detail: "Post replies automatically for positive reviews.",
+                  title: t("auto_draft"),
+                  detail: t("auto_draft_detail"),
                 },
                 {
                   key: "holdLowStars",
-                  title: "Hold 3 stars or lower",
-                  detail: "Require manual approval before posting.",
+                  title: t("hold_low"),
+                  detail: t("hold_low_detail"),
                 },
               ].map((item) => (
                 <label
@@ -316,66 +298,6 @@ export default function SettingsPage() {
                   </span>
                 </label>
               ))}
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-[var(--color-stroke)] bg-white/70 p-6 shadow-[0_16px_32px_rgba(29,27,22,0.08)] backdrop-blur">
-            <h2 className="font-display text-2xl text-[var(--color-ink)]">
-              Google reply settings
-            </h2>
-            <p className="mt-2 text-sm text-[var(--color-muted)]">
-              Configure the reply voice and approval flow before auto-posting.
-            </p>
-            <div className="mt-5 grid gap-4 text-sm">
-              <label className="block space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                  Reply tone
-                </span>
-                <select
-                  className="w-full rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-ink)]"
-                  value={formState.replyTone}
-                  onChange={(event) =>
-                    handleChange("replyTone", event.target.value)
-                  }
-                >
-                  {REPLY_TONES.map((tone) => (
-                    <option key={tone} value={tone}>
-                      {tone}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                  Manual approval threshold
-                </span>
-                <input
-                  className="w-full rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-ink)]"
-                  type="text"
-                  value={formState.approvalThreshold}
-                  onChange={(event) =>
-                    handleChange("approvalThreshold", event.target.value)
-                  }
-                />
-              </label>
-              <label className="block space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                  Auto-post delay
-                </span>
-                <select
-                  className="w-full rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-ink)]"
-                  value={formState.autoPostDelay}
-                  onChange={(event) =>
-                    handleChange("autoPostDelay", event.target.value)
-                  }
-                >
-                  {AUTO_POST_DELAYS.map((delay) => (
-                    <option key={delay} value={delay}>
-                      {delay}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
           </div>
 
