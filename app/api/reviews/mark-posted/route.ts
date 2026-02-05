@@ -65,22 +65,21 @@ export async function POST(request: Request) {
       ? "SET #reply = :reply, #status = :status, updatedAt = :updatedAt, replyPostedAt = :replyPostedAt"
       : "SET #status = :status, updatedAt = :updatedAt, replyPostedAt = :replyPostedAt";
 
-    const expressionAttributeNames = hasReply
-      ? { "#reply": "reply", "#status": "status" }
-      : { "#status": "status" };
+    const expressionAttributeNames: Record<string, string> = {
+      "#status": "status",
+    };
+    if (hasReply) {
+      expressionAttributeNames["#reply"] = "reply";
+    }
 
-    const expressionAttributeValues = hasReply
-      ? {
-          ":reply": reply,
-          ":status": "posted",
-          ":updatedAt": nowIso,
-          ":replyPostedAt": nowIso,
-        }
-      : {
-          ":status": "posted",
-          ":updatedAt": nowIso,
-          ":replyPostedAt": nowIso,
-        };
+    const expressionAttributeValues: Record<string, unknown> = {
+      ":status": "posted",
+      ":updatedAt": nowIso,
+      ":replyPostedAt": nowIso,
+    };
+    if (hasReply) {
+      expressionAttributeValues[":reply"] = reply;
+    }
 
     await docClient.send(
       new UpdateCommand({
