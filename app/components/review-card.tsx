@@ -18,6 +18,11 @@ export default function ReviewCard({ review }: ReviewCardProps) {
   const [draftReply, setDraftReply] = useState<string | null>(
     review.reply ?? null
   );
+  const [draftReplyOriginal, setDraftReplyOriginal] = useState<string | null>(
+    review.replyOriginal ?? null
+  );
+  const [draftReplyTranslated, setDraftReplyTranslated] =
+    useState<string | null>(review.replyTranslated ?? null);
   const [isDrafting, setIsDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [isPosting, setIsPosting] = useState(false);
@@ -28,6 +33,12 @@ export default function ReviewCard({ review }: ReviewCardProps) {
   useEffect(() => {
     setIsPosted(review.status === "posted");
   }, [review.status]);
+
+  useEffect(() => {
+    setDraftReply(review.reply ?? null);
+    setDraftReplyOriginal(review.replyOriginal ?? null);
+    setDraftReplyTranslated(review.replyTranslated ?? null);
+  }, [review.reply, review.replyOriginal, review.replyTranslated]);
 
   const showPostMessage = (message: string) => {
     setPostMessage(message);
@@ -57,7 +68,12 @@ export default function ReviewCard({ review }: ReviewCardProps) {
         }),
       });
 
-      const data = (await response.json()) as { reply?: string; error?: string };
+      const data = (await response.json()) as {
+        reply?: string;
+        replyOriginal?: string | null;
+        replyTranslated?: string | null;
+        error?: string;
+      };
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to draft reply");
@@ -65,6 +81,8 @@ export default function ReviewCard({ review }: ReviewCardProps) {
 
       if (data.reply) {
         setDraftReply(data.reply);
+        setDraftReplyOriginal(data.replyOriginal ?? null);
+        setDraftReplyTranslated(data.replyTranslated ?? null);
       }
     } catch (error) {
       setDraftError(
@@ -156,6 +174,26 @@ export default function ReviewCard({ review }: ReviewCardProps) {
         <p className="mt-2 text-sm leading-6 text-[var(--color-ink)]">
           {draftReply ?? "No reply drafted yet."}
         </p>
+        {draftReplyOriginal && draftReplyOriginal !== draftReply ? (
+          <div className="mt-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+              Original reply
+            </p>
+            <p className="mt-1 text-sm leading-6 text-[var(--color-ink)]">
+              {draftReplyOriginal}
+            </p>
+          </div>
+        ) : null}
+        {draftReplyTranslated && draftReplyTranslated !== draftReply ? (
+          <div className="mt-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+              Translated reply
+            </p>
+            <p className="mt-1 text-sm leading-6 text-[var(--color-ink)]">
+              {draftReplyTranslated}
+            </p>
+          </div>
+        ) : null}
         {draftError ? (
           <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-alert-strong)]">
             {draftError}

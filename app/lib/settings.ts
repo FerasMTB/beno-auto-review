@@ -48,6 +48,7 @@ export const getReplySettings = async () => {
       prompt: toPrompt(response.Item?.replyPrompt) ?? DEFAULT_REPLY_PROMPT,
       preferredLanguage:
         toPrompt(response.Item?.preferredLanguage) ??
+        toPrompt(response.Item?.preferdLanguage) ??
         DEFAULT_PREFERRED_LANGUAGE,
     };
   } catch {

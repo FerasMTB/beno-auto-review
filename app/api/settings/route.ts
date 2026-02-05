@@ -25,6 +25,7 @@ type SettingsRecord = {
   syncTime: string;
   replyPrompt: string;
   preferredLanguage: string;
+  preferdLanguage?: string;
   autoDraftReplies: boolean;
   autoPostHighStars: boolean;
   holdLowStars: boolean;
@@ -96,7 +97,8 @@ const pickSettings = (payload: unknown) => {
     result.replyPrompt = replyPrompt;
   }
 
-  const preferredLanguage = toString(data.preferredLanguage);
+  const preferredLanguage =
+    toString(data.preferredLanguage) ?? toString(data.preferdLanguage);
   if (preferredLanguage) {
     result.preferredLanguage = preferredLanguage;
   }
@@ -154,6 +156,12 @@ export async function GET() {
       ...DEFAULT_SETTINGS,
       ...(response.Item ?? {}),
     };
+    const preferredLanguage =
+      toString(response.Item?.preferredLanguage) ??
+      toString(response.Item?.preferdLanguage);
+    if (preferredLanguage) {
+      settings.preferredLanguage = preferredLanguage;
+    }
 
     return NextResponse.json({ ok: true, settings });
   } catch (error) {
@@ -202,10 +210,19 @@ export async function POST(request: Request) {
         ? existing.Item.createdAt
         : nowIso;
 
+    const existingPreferredLanguage =
+      toString(existing.Item?.preferredLanguage) ??
+      toString(existing.Item?.preferdLanguage);
+    const preferredLanguage =
+      incoming.preferredLanguage ??
+      existingPreferredLanguage ??
+      DEFAULT_SETTINGS.preferredLanguage;
+
     const item: SettingsRecord = {
       ...DEFAULT_SETTINGS,
       ...(existing.Item ?? {}),
       ...incoming,
+      preferredLanguage,
       settingId: SETTINGS_ID,
       createdAt,
       updatedAt: nowIso,

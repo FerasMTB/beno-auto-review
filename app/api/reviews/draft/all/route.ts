@@ -9,6 +9,7 @@ import {
   buildUserPrompt,
   extractPromptInput,
   generateReply,
+  type GeneratedReply,
 } from "@/app/lib/review-draft";
 import { getReplySettings } from "@/app/lib/settings";
 
@@ -42,7 +43,7 @@ const parseLimit = (value: unknown) => {
   return DEFAULT_LIMIT;
 };
 
-const updateReply = async (reviewKey: string, reply: string) => {
+const updateReply = async (reviewKey: string, reply: GeneratedReply) => {
   if (!TABLE_NAME) {
     throw new Error("REVIEWS_TABLE is not configured");
   }
@@ -55,13 +56,17 @@ const updateReply = async (reviewKey: string, reply: string) => {
         TableName: TABLE_NAME,
         Key: { reviewId: reviewKey },
         UpdateExpression:
-          "SET #reply = :reply, #status = :status, updatedAt = :updatedAt, replyGeneratedAt = :replyGeneratedAt",
+          "SET #reply = :reply, #status = :status, #replyOriginal = :replyOriginal, #replyTranslated = :replyTranslated, updatedAt = :updatedAt, replyGeneratedAt = :replyGeneratedAt",
         ExpressionAttributeNames: {
           "#reply": "reply",
           "#status": "status",
+          "#replyOriginal": "replyOriginal",
+          "#replyTranslated": "replyTranslated",
         },
         ExpressionAttributeValues: {
-          ":reply": reply,
+          ":reply": reply.reply,
+          ":replyOriginal": reply.replyOriginal ?? null,
+          ":replyTranslated": reply.replyTranslated ?? null,
           ":status": "draft",
           ":updatedAt": nowIso,
           ":replyGeneratedAt": nowIso,
@@ -143,12 +148,12 @@ export async function POST(request: Request) {
         }
 
         const prompt = buildUserPrompt(input, promptOverride ?? settingsPrompt);
-        const reply = await generateReply(
+        const replyData = await generateReply(
           prompt,
           input.reviewText,
           preferredLanguage
         );
-        const updateResult = await updateReply(input.reviewKey, reply);
+        const updateResult = await updateReply(input.reviewKey, replyData);
 
         if (updateResult.updated) {
           results.drafted += 1;

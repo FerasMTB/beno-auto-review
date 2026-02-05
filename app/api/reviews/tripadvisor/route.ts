@@ -5,6 +5,7 @@ import {
   buildUserPrompt,
   extractPromptInput,
   generateReply,
+  type GeneratedReply,
 } from "@/app/lib/review-draft";
 import { extractReviewsPayload, ingestReviews } from "@/app/lib/reviews-ingest";
 import { getReplySettings } from "@/app/lib/settings";
@@ -36,7 +37,7 @@ const withDefaultSource = (review: unknown, source: string) => {
 
 const updateDraftReply = async (
   reviewKey: string,
-  reply: string,
+  reply: GeneratedReply,
   status: "draft" | "needs-review"
 ) => {
   if (!TABLE_NAME) {
@@ -51,13 +52,17 @@ const updateDraftReply = async (
         TableName: TABLE_NAME,
         Key: { reviewId: reviewKey },
         UpdateExpression:
-          "SET #reply = :reply, #status = :status, updatedAt = :updatedAt, replyGeneratedAt = :replyGeneratedAt",
+          "SET #reply = :reply, #status = :status, #replyOriginal = :replyOriginal, #replyTranslated = :replyTranslated, updatedAt = :updatedAt, replyGeneratedAt = :replyGeneratedAt",
         ExpressionAttributeNames: {
           "#reply": "reply",
           "#status": "status",
+          "#replyOriginal": "replyOriginal",
+          "#replyTranslated": "replyTranslated",
         },
         ExpressionAttributeValues: {
-          ":reply": reply,
+          ":reply": reply.reply,
+          ":replyOriginal": reply.replyOriginal ?? null,
+          ":replyTranslated": reply.replyTranslated ?? null,
           ":status": status,
           ":updatedAt": nowIso,
           ":replyGeneratedAt": nowIso,
@@ -104,7 +109,7 @@ const autoGenerateReplies = async (
       }
 
       const prompt = buildUserPrompt(input, settingsPrompt);
-      const reply = await generateReply(
+      const replyData = await generateReply(
         prompt,
         input.reviewText,
         preferredLanguage
@@ -116,7 +121,7 @@ const autoGenerateReplies = async (
           : "draft";
       const updateResult = await updateDraftReply(
         input.reviewKey,
-        reply,
+        replyData,
         status
       );
 

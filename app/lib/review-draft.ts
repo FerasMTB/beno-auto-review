@@ -8,6 +8,12 @@ type PromptInput = {
   link: string | null;
 };
 
+export type GeneratedReply = {
+  reply: string;
+  replyOriginal: string | null;
+  replyTranslated: string | null;
+};
+
 const REPLY_WEBHOOK_URL =
   process.env.REPLY_WEBHOOK_URL ??
   "https://n8n-app.stg.beno.com/webhook/generate-reply";
@@ -151,38 +157,74 @@ export const buildUserPrompt = (
   )}\n\nReply:`;
 };
 
-const getReplyFromPayload = (payload: unknown): string | null => {
-  const pickReplyFromObject = (text: Record<string, unknown>) => {
-    const reply = toTrimmedString(text.reply);
-    const replyTranslated =
-      toTrimmedString(text.reply_translated) ??
-      toTrimmedString(text.replyTranslated);
-    const preferredFlag =
-      typeof text.in_preferd_language === "boolean"
-        ? text.in_preferd_language
-        : typeof text.in_preferred_language === "boolean"
-          ? text.in_preferred_language
-          : null;
+const resolvePreferredReply = (
+  replyOriginal: string | null,
+  replyTranslated: string | null,
+  preferredFlag: boolean | null
+) => {
+  if (preferredFlag === false && replyTranslated) {
+    return replyTranslated;
+  }
+  if (preferredFlag === true && replyOriginal) {
+    return replyOriginal;
+  }
+  return replyOriginal ?? replyTranslated ?? null;
+};
 
-    if (preferredFlag === false && replyTranslated) {
-      return replyTranslated;
+const getReplyDataFromObject = (
+  text: Record<string, unknown>
+): GeneratedReply | null => {
+  const replyOriginal = toTrimmedString(text.reply);
+  const replyTranslated =
+    toTrimmedString(text.reply_translated) ??
+    toTrimmedString(text.replyTranslated);
+  const preferredFlag =
+    typeof text.in_preferd_language === "boolean"
+      ? text.in_preferd_language
+      : typeof text.in_preferred_language === "boolean"
+        ? text.in_preferred_language
+        : null;
+
+  const preferredReply = resolvePreferredReply(
+    replyOriginal,
+    replyTranslated,
+    preferredFlag
+  );
+
+  if (!preferredReply) {
+    return null;
+  }
+
+  return {
+    reply: preferredReply,
+    replyOriginal,
+    replyTranslated,
+  };
+};
+
+const getReplyDataFromPayload = (payload: unknown): GeneratedReply | null => {
+  const buildStringReply = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed.length) {
+      return null;
     }
-    if (preferredFlag === true && reply) {
-      return reply;
-    }
-    return replyTranslated ?? reply;
+    return {
+      reply: trimmed,
+      replyOriginal: trimmed,
+      replyTranslated: null,
+    };
   };
 
   if (Array.isArray(payload)) {
     for (const entry of payload) {
-      const reply = getReplyFromPayload(entry);
-      if (reply) {
-        return reply;
+      const replyData = getReplyDataFromPayload(entry);
+      if (replyData) {
+        return replyData;
       }
     }
   }
   if (typeof payload === "string") {
-    return payload.trim().length ? payload.trim() : null;
+    return buildStringReply(payload);
   }
   if (isRecord(payload)) {
     if (Array.isArray(payload.output)) {
@@ -197,20 +239,24 @@ const getReplyFromPayload = (payload: unknown): string | null => {
             typeof contentItem.text === "string" &&
             contentItem.text.trim().length
           ) {
-            return contentItem.text.trim();
+            return buildStringReply(contentItem.text);
           }
           if (
             isRecord(contentItem) &&
             contentItem.type === "output_text" &&
             isRecord(contentItem.text)
           ) {
-            const reply = pickReplyFromObject(contentItem.text);
-            if (reply) {
-              return reply;
+            const replyData = getReplyDataFromObject(contentItem.text);
+            if (replyData) {
+              return replyData;
             }
           }
         }
       }
+    }
+    const directReply = getReplyDataFromObject(payload);
+    if (directReply) {
+      return directReply;
     }
     const replyCandidates = [
       payload.reply,
@@ -220,12 +266,12 @@ const getReplyFromPayload = (payload: unknown): string | null => {
     ];
     for (const candidate of replyCandidates) {
       if (typeof candidate === "string" && candidate.trim().length) {
-        return candidate.trim();
+        return buildStringReply(candidate);
       }
       if (isRecord(candidate)) {
-        const reply = pickReplyFromObject(candidate);
-        if (reply) {
-          return reply;
+        const replyData = getReplyDataFromObject(candidate);
+        if (replyData) {
+          return replyData;
         }
       }
     }
@@ -255,7 +301,7 @@ export const generateReply = async (
   prompt: string,
   reviewText: string | null,
   preferredLanguage: string | null = null
-) => {
+): Promise<GeneratedReply> => {
   const trimmedLanguage = toTrimmedString(preferredLanguage);
   const response = await fetch(REPLY_WEBHOOK_URL, {
     method: "POST",
@@ -289,10 +335,10 @@ export const generateReply = async (
     throw new Error(errorText);
   }
 
-  const reply = getReplyFromPayload(parsedBody);
-  if (!reply) {
+  const replyData = getReplyDataFromPayload(parsedBody);
+  if (!replyData) {
     throw new Error("Reply webhook did not return a reply");
   }
 
-  return reply;
+  return replyData;
 };

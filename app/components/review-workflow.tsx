@@ -7,7 +7,12 @@ import type { Review, ReviewStatus } from "../lib/types";
 
 type ReviewWorkflowProps = {
   reviews: Review[];
-  onReplyUpdate?: (reviewKey: string | null, reply: string) => void;
+  onReplyUpdate?: (
+    reviewKey: string | null,
+    reply: string,
+    replyOriginal?: string | null,
+    replyTranslated?: string | null
+  ) => void;
   onStatusUpdate?: (reviewKey: string | null, status: ReviewStatus) => void;
 };
 
@@ -35,6 +40,9 @@ export default function ReviewWorkflow({
   );
   const [index, setIndex] = useState(0);
   const [draftReply, setDraftReply] = useState<string | null>(null);
+  const [draftReplyOriginal, setDraftReplyOriginal] = useState<string | null>(null);
+  const [draftReplyTranslated, setDraftReplyTranslated] =
+    useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [postError, setPostError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -52,8 +60,16 @@ export default function ReviewWorkflow({
 
   useEffect(() => {
     setDraftReply(current?.reply ?? null);
+    setDraftReplyOriginal(current?.replyOriginal ?? null);
+    setDraftReplyTranslated(current?.replyTranslated ?? null);
     setIsPosted(current?.status === "posted");
-  }, [current?.reply, current?.id, current?.status]);
+  }, [
+    current?.reply,
+    current?.replyOriginal,
+    current?.replyTranslated,
+    current?.id,
+    current?.status,
+  ]);
 
   const showMessage = useCallback((message: string) => {
     setActionMessage(message);
@@ -141,7 +157,12 @@ export default function ReviewWorkflow({
         }),
       });
 
-      const data = (await response.json()) as { reply?: string; error?: string };
+      const data = (await response.json()) as {
+        reply?: string;
+        replyOriginal?: string | null;
+        replyTranslated?: string | null;
+        error?: string;
+      };
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to draft reply");
@@ -151,7 +172,14 @@ export default function ReviewWorkflow({
         const updateKey =
           current.reviewKey ?? `${current.source}#${current.id}`;
         setDraftReply(data.reply);
-        onReplyUpdate?.(updateKey, data.reply);
+        setDraftReplyOriginal(data.replyOriginal ?? null);
+        setDraftReplyTranslated(data.replyTranslated ?? null);
+        onReplyUpdate?.(
+          updateKey,
+          data.reply,
+          data.replyOriginal ?? null,
+          data.replyTranslated ?? null
+        );
         showMessage("Reply drafted");
       }
     } catch (error) {
@@ -310,6 +338,26 @@ export default function ReviewWorkflow({
         <p className="mt-2 text-sm leading-6 text-[var(--color-ink)]">
           {draftReply ?? "No reply drafted yet."}
         </p>
+        {draftReplyOriginal && draftReplyOriginal !== draftReply ? (
+          <div className="mt-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+              Original reply
+            </p>
+            <p className="mt-1 text-sm leading-6 text-[var(--color-ink)]">
+              {draftReplyOriginal}
+            </p>
+          </div>
+        ) : null}
+        {draftReplyTranslated && draftReplyTranslated !== draftReply ? (
+          <div className="mt-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+              Translated reply
+            </p>
+            <p className="mt-1 text-sm leading-6 text-[var(--color-ink)]">
+              {draftReplyTranslated}
+            </p>
+          </div>
+        ) : null}
         {draftError ? (
           <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-alert-strong)]">
             {draftError}

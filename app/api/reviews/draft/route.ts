@@ -5,6 +5,7 @@ import {
   buildUserPrompt,
   extractPromptInput,
   generateReply,
+  type GeneratedReply,
 } from "@/app/lib/review-draft";
 import { getReplySettings } from "@/app/lib/settings";
 
@@ -22,7 +23,7 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
-const updateReply = async (reviewKey: string, reply: string) => {
+const updateReply = async (reviewKey: string, reply: GeneratedReply) => {
   if (!TABLE_NAME) {
     throw new Error("REVIEWS_TABLE is not configured");
   }
@@ -35,13 +36,17 @@ const updateReply = async (reviewKey: string, reply: string) => {
         TableName: TABLE_NAME,
         Key: { reviewId: reviewKey },
         UpdateExpression:
-          "SET #reply = :reply, #status = :status, updatedAt = :updatedAt, replyGeneratedAt = :replyGeneratedAt",
+          "SET #reply = :reply, #status = :status, #replyOriginal = :replyOriginal, #replyTranslated = :replyTranslated, updatedAt = :updatedAt, replyGeneratedAt = :replyGeneratedAt",
         ExpressionAttributeNames: {
           "#reply": "reply",
           "#status": "status",
+          "#replyOriginal": "replyOriginal",
+          "#replyTranslated": "replyTranslated",
         },
         ExpressionAttributeValues: {
-          ":reply": reply,
+          ":reply": reply.reply,
+          ":replyOriginal": reply.replyOriginal ?? null,
+          ":replyTranslated": reply.replyTranslated ?? null,
           ":status": "draft",
           ":updatedAt": nowIso,
           ":replyGeneratedAt": nowIso,
@@ -84,19 +89,21 @@ export async function POST(request: Request) {
     const replySettings = await getReplySettings();
     const settingsPrompt = promptOverride ? null : replySettings.prompt;
     const prompt = buildUserPrompt(input, promptOverride ?? settingsPrompt);
-    const reply = await generateReply(
+    const replyData = await generateReply(
       prompt,
       input.reviewText,
       replySettings.preferredLanguage
     );
 
     const updateResult =
-      input.reviewKey !== null ? await updateReply(input.reviewKey, reply) : null;
+      input.reviewKey !== null ? await updateReply(input.reviewKey, replyData) : null;
 
     return NextResponse.json(
       {
         ok: true,
-        reply,
+        reply: replyData.reply,
+        replyOriginal: replyData.replyOriginal,
+        replyTranslated: replyData.replyTranslated,
         reviewId: input.reviewKey,
         updated: updateResult?.updated ?? false,
       },

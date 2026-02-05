@@ -14,6 +14,8 @@ type ApiReviewItem = {
   status?: string;
   review?: string | null;
   reply?: string | null;
+  replyOriginal?: string | null;
+  replyTranslated?: string | null;
   rating?: number | null;
   link?: string | null;
   authorName?: string | null;
@@ -100,6 +102,8 @@ const mapReviewItem = (item: ApiReviewItem): ReviewItem => {
     date: formatDate(reviewedAt),
     review: item.review ?? null,
     reply: item.reply ?? null,
+    replyOriginal: item.replyOriginal ?? null,
+    replyTranslated: item.replyTranslated ?? null,
     status: normalizeStatus(item.status),
     link: item.link ?? null,
     reviewedAt,
@@ -126,7 +130,13 @@ const matchesSearch = (review: ReviewItem, query: string) => {
     return true;
   }
   const lowered = query.toLowerCase();
-  const haystack = [review.author, review.review ?? "", review.reply ?? ""]
+  const haystack = [
+    review.author,
+    review.review ?? "",
+    review.reply ?? "",
+    review.replyOriginal ?? "",
+    review.replyTranslated ?? "",
+  ]
     .join(" ")
     .toLowerCase();
   return haystack.includes(lowered);
@@ -245,18 +255,33 @@ export default function DashboardPage() {
     );
   }, [filter, query, reviews]);
 
-  const handleWorkflowReplyUpdate = (reviewKey: string | null, reply: string) => {
+  const handleWorkflowReplyUpdate = (
+    reviewKey: string | null,
+    reply: string,
+    replyOriginal?: string | null,
+    replyTranslated?: string | null
+  ) => {
     if (!reviewKey) {
       return;
     }
     setReviews((prev) =>
       prev.map((review) => {
         if (review.reviewKey === reviewKey) {
-          return { ...review, reply };
+          return {
+            ...review,
+            reply,
+            replyOriginal: replyOriginal ?? review.replyOriginal ?? null,
+            replyTranslated: replyTranslated ?? review.replyTranslated ?? null,
+          };
         }
         const fallbackKey = `${review.source}#${review.id}`;
         if (!review.reviewKey && fallbackKey === reviewKey) {
-          return { ...review, reply };
+          return {
+            ...review,
+            reply,
+            replyOriginal: replyOriginal ?? review.replyOriginal ?? null,
+            replyTranslated: replyTranslated ?? review.replyTranslated ?? null,
+          };
         }
         return review;
       })

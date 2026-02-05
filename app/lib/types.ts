@@ -16,6 +16,8 @@ export type Review = {
   date: string;
   review: string | null;
   reply: string | null;
+  replyOriginal?: string | null;
+  replyTranslated?: string | null;
   status: ReviewStatus;
   link: string | null;
 };

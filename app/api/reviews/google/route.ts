@@ -5,6 +5,7 @@ import {
   buildUserPrompt,
   extractPromptInput,
   generateReply,
+  type GeneratedReply,
 } from "@/app/lib/review-draft";
 import { extractReviewsPayload, ingestReviews } from "@/app/lib/reviews-ingest";
 import { getReplySettings } from "@/app/lib/settings";
@@ -79,7 +80,7 @@ const parseWebhookResult = async (response: Response) => {
 
 const updateDraftReply = async (
   reviewKey: string,
-  reply: string,
+  reply: GeneratedReply,
   status: "draft" | "needs-review"
 ) => {
   if (!TABLE_NAME) {
@@ -94,13 +95,17 @@ const updateDraftReply = async (
         TableName: TABLE_NAME,
         Key: { reviewId: reviewKey },
         UpdateExpression:
-          "SET #reply = :reply, #status = :status, updatedAt = :updatedAt, replyGeneratedAt = :replyGeneratedAt",
+          "SET #reply = :reply, #status = :status, #replyOriginal = :replyOriginal, #replyTranslated = :replyTranslated, updatedAt = :updatedAt, replyGeneratedAt = :replyGeneratedAt",
         ExpressionAttributeNames: {
           "#reply": "reply",
           "#status": "status",
+          "#replyOriginal": "replyOriginal",
+          "#replyTranslated": "replyTranslated",
         },
         ExpressionAttributeValues: {
-          ":reply": reply,
+          ":reply": reply.reply,
+          ":replyOriginal": reply.replyOriginal ?? null,
+          ":replyTranslated": reply.replyTranslated ?? null,
           ":status": status,
           ":updatedAt": nowIso,
           ":replyGeneratedAt": nowIso,
@@ -122,7 +127,7 @@ const updateDraftReply = async (
   }
 };
 
-const updatePostedReply = async (reviewKey: string, reply: string) => {
+const updatePostedReply = async (reviewKey: string, reply: GeneratedReply) => {
   if (!TABLE_NAME) {
     return false;
   }
@@ -135,13 +140,17 @@ const updatePostedReply = async (reviewKey: string, reply: string) => {
         TableName: TABLE_NAME,
         Key: { reviewId: reviewKey },
         UpdateExpression:
-          "SET #reply = :reply, #status = :status, updatedAt = :updatedAt, replyPostedAt = :replyPostedAt",
+          "SET #reply = :reply, #status = :status, #replyOriginal = :replyOriginal, #replyTranslated = :replyTranslated, updatedAt = :updatedAt, replyPostedAt = :replyPostedAt",
         ExpressionAttributeNames: {
           "#reply": "reply",
           "#status": "status",
+          "#replyOriginal": "replyOriginal",
+          "#replyTranslated": "replyTranslated",
         },
         ExpressionAttributeValues: {
-          ":reply": reply,
+          ":reply": reply.reply,
+          ":replyOriginal": reply.replyOriginal ?? null,
+          ":replyTranslated": reply.replyTranslated ?? null,
           ":status": "posted",
           ":updatedAt": nowIso,
           ":replyPostedAt": nowIso,
@@ -210,7 +219,7 @@ const autoGenerateReplies = async (
       }
 
       const prompt = buildUserPrompt(input, settingsPrompt);
-      const reply = await generateReply(
+      const replyData = await generateReply(
         prompt,
         input.reviewText,
         preferredLanguage
@@ -222,7 +231,7 @@ const autoGenerateReplies = async (
           : "draft";
       const updateResult = await updateDraftReply(
         input.reviewKey,
-        reply,
+        replyData,
         status
       );
 
@@ -247,8 +256,8 @@ const autoGenerateReplies = async (
         continue;
       }
 
-      await postReply(rawReviewId, reply, input.reviewKey);
-      const posted = await updatePostedReply(input.reviewKey, reply);
+      await postReply(rawReviewId, replyData.reply, input.reviewKey);
+      const posted = await updatePostedReply(input.reviewKey, replyData);
       if (posted) {
         results.posted += 1;
       }
